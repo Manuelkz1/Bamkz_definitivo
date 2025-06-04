@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { toast } from 'react-hot-toast';
+import { useAuthStore } from '../stores/authStore';
 import { Review } from '../types/index';
-import { Check, X, Star, Search, RefreshCw, Plus } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Star, Search, RefreshCw, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function ReviewManager() {
+  const { user } = useAuthStore();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'all'>('pending');
@@ -14,7 +16,7 @@ export default function ReviewManager() {
   const [products, setProducts] = useState<{id: string, name: string}[]>([]);
   const [newReview, setNewReview] = useState({
     product_id: '',
-    Name: '', // Cambiado a 'Name' con N mayúscula
+    Name: '', // Usando 'Name' con N mayúscula
     rating: 5,
     comment: '',
     approved: true
@@ -34,6 +36,10 @@ export default function ReviewManager() {
 
       if (error) throw error;
       setProducts(data || []);
+      
+      if (data && data.length > 0) {
+        setNewReview(prev => ({ ...prev, product_id: data[0].id }));
+      }
     } catch (error) {
       console.error('Error loading products:', error);
       toast.error('Error al cargar los productos');
@@ -108,9 +114,7 @@ export default function ReviewManager() {
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta reseña?')) {
-      return;
-    }
+    if (!confirm('¿Estás seguro de que quieres eliminar esta reseña?')) return;
 
     try {
       const { error } = await supabase
@@ -120,7 +124,7 @@ export default function ReviewManager() {
 
       if (error) throw error;
       
-      setReviews(prev => prev.filter(review => review.id !== reviewId));
+      setReviews(prev => prev.filter(r => r.id !== reviewId));
       toast.success('Reseña eliminada');
     } catch (error) {
       console.error('Error deleting review:', error);
@@ -131,12 +135,18 @@ export default function ReviewManager() {
   const handleCreateReview = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      toast.error('Debes estar autenticado para crear reseñas');
+      return;
+    }
+
     if (!newReview.product_id) {
       toast.error('Debes seleccionar un producto');
       return;
     }
 
-    if (!newReview.Name) { // Cambiado a 'Name' con N mayúscula
+    const trimmedName = newReview.Name.trim();
+    if (!trimmedName) {
       toast.error('Debes ingresar un nombre de usuario');
       return;
     }
@@ -147,54 +157,44 @@ export default function ReviewManager() {
     }
 
     try {
-      // Crear objeto con solo los campos necesarios para la tabla reviews
       const reviewData = {
+        id: crypto.randomUUID(),
         product_id: newReview.product_id,
-        Name: newReview.Name, // Cambiado a 'Name' con N mayúscula
+        user_id: user.id,
+        Name: trimmedName, // Usando 'Name' con N mayúscula
         rating: newReview.rating,
-        comment: newReview.comment,
+        comment: newReview.comment.trim(),
         approved: newReview.approved,
         created_at: new Date().toISOString()
       };
 
       console.log('Enviando datos de reseña:', reviewData);
 
-      // Insertar la reseña
       const { error: insertError } = await supabase
         .from('reviews')
-        .insert(reviewData);
+        .insert([reviewData])
+        .select();
 
       if (insertError) {
         console.error('Error de inserción:', insertError);
         throw insertError;
       }
       
-      // Cargar la reseña recién creada con los datos del producto
-      const { data: newReviewData, error: fetchError } = await supabase
-        .from('reviews')
-        .select(`
-          *,
-          products (
-            name
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (fetchError) throw fetchError;
+      toast.success('Reseña creada con éxito');
       
-      if (newReviewData && newReviewData.length > 0) {
-        setReviews(prev => [newReviewData[0], ...prev]);
-        toast.success('Reseña creada con éxito');
-        setNewReview({
-          product_id: '',
-          Name: '', // Cambiado a 'Name' con N mayúscula
-          rating: 5,
-          comment: '',
-          approved: true
-        });
-        setShowCreateForm(false);
-      }
+      // Reset form
+      setNewReview({
+        product_id: products[0]?.id || '',
+        Name: '', // Usando 'Name' con N mayúscula
+        rating: 5,
+        comment: '',
+        approved: true
+      });
+      
+      setShowCreateForm(false);
+      
+      // Reload reviews to show the new one
+      await loadReviews();
     } catch (error: any) {
       console.error('Error creating review:', error);
       toast.error(`Error al crear la reseña: ${error.message || 'Intente nuevamente'}`);
@@ -210,7 +210,7 @@ export default function ReviewManager() {
     const matchesSearch =
       searchTerm === '' ||
       review.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.Name?.toLowerCase().includes(searchTerm.toLowerCase()) || // Cambiado a 'Name' con N mayúscula
+      review.Name?.toLowerCase().includes(searchTerm.toLowerCase()) || // Usando 'Name' con N mayúscula
       (review as any).products?.name.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesFilter && matchesSearch;
@@ -277,8 +277,8 @@ export default function ReviewManager() {
               <input
                 type="text"
                 id="username"
-                value={newReview.Name} // Cambiado a 'Name' con N mayúscula
-                onChange={(e) => setNewReview(prev => ({ ...prev, Name: e.target.value }))} // Cambiado a 'Name' con N mayúscula
+                value={newReview.Name} // Usando 'Name' con N mayúscula
+                onChange={(e) => setNewReview(prev => ({ ...prev, Name: e.target.value }))} // Usando 'Name' con N mayúscula
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Ej: María López"
                 required
@@ -420,7 +420,7 @@ export default function ReviewManager() {
                         ))}
                       </div>
                       <p className="ml-2 text-sm text-gray-500">
-                        por {review.Name || 'Usuario anónimo'} {/* Cambiado a 'Name' con N mayúscula */}
+                        por {review.Name || 'Usuario anónimo'} {/* Usando 'Name' con N mayúscula */}
                       </p>
                     </div>
                     <p className="mt-1 text-sm text-gray-900">{review.comment}</p>
@@ -435,7 +435,9 @@ export default function ReviewManager() {
                       onClick={() => handleApproveReview(review.id)}
                       className="p-1 rounded-full text-green-600 hover:bg-green-100"
                     >
-                      <Check className="h-5 w-5" />
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
                     </button>
                   )}
                   {review.approved && (
@@ -443,14 +445,18 @@ export default function ReviewManager() {
                       onClick={() => handleRejectReview(review.id)}
                       className="p-1 rounded-full text-yellow-600 hover:bg-yellow-100"
                     >
-                      <X className="h-5 w-5" />
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
                     </button>
                   )}
                   <button
                     onClick={() => handleDeleteReview(review.id)}
                     className="p-1 rounded-full text-red-600 hover:bg-red-100"
                   >
-                    <X className="h-5 w-5" />
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
                   </button>
                 </div>
               </div>

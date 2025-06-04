@@ -80,7 +80,7 @@ export interface Review {
   rating: number;
   comment: string;
   created_at: string;
-  name?: string;
+  name: string; // Changed from optional to required
   approved?: boolean;
 }
 
