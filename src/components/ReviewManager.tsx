@@ -157,6 +157,7 @@ export default function ReviewManager() {
 
     try {
       const reviewData = {
+        id: crypto.randomUUID(), // Generate UUID for the review
         product_id: newReview.product_id,
         user_id: user.id,
         name: newReview.name,
@@ -168,7 +169,8 @@ export default function ReviewManager() {
 
       const { error: insertError } = await supabase
         .from('reviews')
-        .insert([reviewData]);
+        .insert([reviewData])
+        .select();
 
       if (insertError) throw insertError;
       
