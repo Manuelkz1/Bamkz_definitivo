@@ -145,7 +145,8 @@ export default function ReviewManager() {
       return;
     }
 
-    if (!newReview.name) {
+    const trimmedName = newReview.name.trim();
+    if (!trimmedName) {
       toast.error('Debes ingresar un nombre de usuario');
       return;
     }
@@ -157,12 +158,12 @@ export default function ReviewManager() {
 
     try {
       const reviewData = {
-        id: crypto.randomUUID(), // Generate UUID for the review
+        id: crypto.randomUUID(),
         product_id: newReview.product_id,
         user_id: user.id,
-        name: newReview.name,
+        name: trimmedName, // Use trimmed name
         rating: newReview.rating,
-        comment: newReview.comment,
+        comment: newReview.comment.trim(),
         approved: newReview.approved,
         created_at: new Date().toISOString()
       };
@@ -205,7 +206,7 @@ export default function ReviewManager() {
     const matchesSearch =
       searchTerm === '' ||
       review.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      review.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (review as any).products?.name.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesFilter && matchesSearch;
@@ -415,7 +416,7 @@ export default function ReviewManager() {
                         ))}
                       </div>
                       <p className="ml-2 text-sm text-gray-500">
-                        por {review.name || 'Usuario anónimo'}
+                        por {review.name}
                       </p>
                     </div>
                     <p className="mt-1 text-sm text-gray-900">{review.comment}</p>
