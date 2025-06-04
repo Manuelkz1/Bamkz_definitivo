@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { Review } from '../types/index';
-import { Check, X, Star, Search, RefreshCw } from 'lucide-react';
+import { Check, X, Star, Search, RefreshCw, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function ReviewManager() {
@@ -10,10 +10,35 @@ export default function ReviewManager() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'all'>('pending');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [products, setProducts] = useState<{id: string, name: string}[]>([]);
+  const [newReview, setNewReview] = useState({
+    product_id: '',
+    name: '',
+    rating: 5,
+    comment: '',
+    approved: true
+  });
 
   useEffect(() => {
     loadReviews();
+    loadProducts();
   }, []);
+
+  const loadProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      toast.error('Error al cargar los productos');
+    }
+  };
 
   const loadReviews = async () => {
     try {
@@ -103,6 +128,58 @@ export default function ReviewManager() {
     }
   };
 
+  const handleCreateReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newReview.product_id) {
+      toast.error('Debes seleccionar un producto');
+      return;
+    }
+
+    if (!newReview.name) {
+      toast.error('Debes ingresar un nombre de usuario');
+      return;
+    }
+
+    if (!newReview.comment) {
+      toast.error('Debes ingresar un comentario');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .insert({
+          ...newReview,
+          created_at: new Date().toISOString()
+        })
+        .select(`
+          *,
+          products (
+            name
+          )
+        `);
+
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        setReviews(prev => [data[0], ...prev]);
+        toast.success('Reseña creada con éxito');
+        setNewReview({
+          product_id: '',
+          name: '',
+          rating: 5,
+          comment: '',
+          approved: true
+        });
+        setShowCreateForm(false);
+      }
+    } catch (error) {
+      console.error('Error creating review:', error);
+      toast.error('Error al crear la reseña');
+    }
+  };
+
   const filteredReviews = reviews.filter(review => {
     const matchesFilter =
       filter === 'all' ||
@@ -130,14 +207,134 @@ export default function ReviewManager() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Gestión de Reseñas</h2>
-        <button
-          onClick={loadReviews}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <RefreshCw className="h-5 w-5 mr-2" />
-          Actualizar
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Crear Reseña
+          </button>
+          <button
+            onClick={loadReviews}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <RefreshCw className="h-5 w-5 mr-2" />
+            Actualizar
+          </button>
+        </div>
       </div>
+
+      {showCreateForm && (
+        <div className="bg-white shadow sm:rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Crear Nueva Reseña</h3>
+          <form onSubmit={handleCreateReview} className="space-y-4">
+            <div>
+              <label htmlFor="product" className="block text-sm font-medium text-gray-700">
+                Producto
+              </label>
+              <select
+                id="product"
+                value={newReview.product_id}
+                onChange={(e) => setNewReview(prev => ({ ...prev, product_id: e.target.value }))}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                required
+              >
+                <option value="">Seleccionar producto</option>
+                {products.map(product => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Nombre de Usuario
+              </label>
+              <input
+                type="text"
+                id="username"
+                value={newReview.name}
+                onChange={(e) => setNewReview(prev => ({ ...prev, name: e.target.value }))}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Ej: María López"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Calificación
+              </label>
+              <div className="flex items-center mt-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setNewReview(prev => ({ ...prev, rating: star }))}
+                    className="p-1 focus:outline-none"
+                  >
+                    <Star
+                      className={`h-6 w-6 ${
+                        star <= newReview.rating
+                          ? 'text-yellow-400'
+                          : 'text-gray-300'
+                      }`}
+                      fill="currentColor"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <label htmlFor="comment" className="block text-sm font-medium text-gray-700">
+                Comentario
+              </label>
+              <textarea
+                id="comment"
+                rows={3}
+                value={newReview.comment}
+                onChange={(e) => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Escribe un comentario realista sobre el producto..."
+                required
+              />
+            </div>
+            
+            <div className="flex items-center">
+              <input
+                id="approved"
+                type="checkbox"
+                checked={newReview.approved}
+                onChange={(e) => setNewReview(prev => ({ ...prev, approved: e.target.checked }))}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="approved" className="ml-2 block text-sm text-gray-900">
+                Aprobar automáticamente
+              </label>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(false)}
+                className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Crear Reseña
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="flex space-x-4 items-center">
         <div className="flex-1">
