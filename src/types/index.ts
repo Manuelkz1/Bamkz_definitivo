@@ -8,6 +8,7 @@ export interface Product {
   category: string;
   created_at: string;
   updated_at: string;
+  shipping_days?: number; // Días que tarda en llegar el producto
   instructions_file?: string;
   available_colors?: string[];
   color_images?: {

@@ -7,7 +7,8 @@ import {
   Edit,
   Trash2,
   Save,
-  Search
+  Search,
+  Truck
 } from 'lucide-react';
 import type { Product } from '../types/index';
 
@@ -24,6 +25,7 @@ export default function ProductManager() {
     price: '',
     category: '',
     stock: '',
+    shipping_days: '', // Campo para días de envío
     images: [] as string[],
     available_colors: [] as string[],
     color_images: [] as {color: string, image: string}[],
@@ -73,6 +75,7 @@ export default function ProductManager() {
       price: product.price.toString(),
       category: product.category || '',
       stock: product.stock.toString(),
+      shipping_days: product.shipping_days?.toString() || '', // Inicializar campo de días de envío
       images: product.images || [],
       available_colors: product.available_colors || [],
       color_images: product.color_images || [],
@@ -110,6 +113,17 @@ export default function ProductManager() {
         return;
       }
       
+      // Validar días de envío (opcional pero debe ser un número positivo si se proporciona)
+      let shippingDays = undefined;
+      if (productForm.shipping_days) {
+        const days = parseInt(productForm.shipping_days);
+        if (isNaN(days) || days < 0) {
+          toast.error('Los días de envío deben ser un número válido no negativo');
+          return;
+        }
+        shippingDays = days;
+      }
+      
       // Filtrar imágenes vacías
       const filteredImages = productForm.images.filter(img => img.trim() !== '');
       
@@ -142,6 +156,7 @@ export default function ProductManager() {
         price: parseFloat(productForm.price),
         category: productForm.category.trim(),
         stock: parseInt(productForm.stock),
+        shipping_days: shippingDays, // Incluir días de envío en los datos
         images: filteredImages,
         available_colors: filteredColors,
         color_images: validColorImages,
@@ -228,6 +243,7 @@ export default function ProductManager() {
         price: '',
         category: '',
         stock: '',
+        shipping_days: '',
         images: [],
         available_colors: [],
         color_images: [],
@@ -374,6 +390,43 @@ export default function ProductManager() {
     }));
   };
 
+  // Función para actualizar rápidamente los días de envío sin abrir el modal completo
+  const handleQuickShippingDaysUpdate = async (productId: string, currentDays: number | undefined) => {
+    const newDays = prompt('Ingrese los días de envío para este producto:', currentDays?.toString() || '');
+    
+    if (newDays === null) return; // Usuario canceló
+    
+    const days = parseInt(newDays);
+    if (isNaN(days) || days < 0) {
+      toast.error('Los días de envío deben ser un número válido no negativo');
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({
+          shipping_days: days,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', productId);
+      
+      if (error) throw error;
+      
+      // Actualizar el estado local
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p.id === productId ? { ...p, shipping_days: days } : p
+        )
+      );
+      
+      toast.success('Días de envío actualizados exitosamente');
+    } catch (error: any) {
+      console.error('Error updating shipping days:', error);
+      toast.error('Error al actualizar los días de envío');
+    }
+  };
+
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -393,6 +446,7 @@ export default function ProductManager() {
               price: '',
               category: '',
               stock: '',
+              shipping_days: '',
               images: [''],
               available_colors: [],
               color_images: [],
@@ -444,6 +498,7 @@ export default function ProductManager() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Días de Envío</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
@@ -467,34 +522,39 @@ export default function ProductManager() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">${product.price.toLocaleString()}</div>
-                    {product.original_price && product.original_price > product.price && (
-                      <div className="text-xs text-gray-500 line-through">${product.original_price.toLocaleString()}</div>
-                    )}
+                    <div className="text-sm text-gray-900">${product.price.toFixed(2)}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`text-sm ${product.stock > 10 ? 'text-green-600' : product.stock > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
-                      {product.stock}
+                    <div className="text-sm text-gray-900">{product.stock}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 flex items-center">
+                      {product.shipping_days !== undefined ? `${product.shipping_days} días` : 'No definido'}
+                      <button
+                        onClick={() => handleQuickShippingDaysUpdate(product.id, product.shipping_days)}
+                        className="ml-2 p-1 text-indigo-600 hover:bg-indigo-50 rounded-full"
+                        title="Editar días de envío"
+                      >
+                        <Truck className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{product.category || 'Sin categoría'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 justify-end">
                       <button
                         onClick={() => handleEditProduct(product)}
-                        className="text-indigo-600 hover:text-indigo-900 flex items-center"
+                        className="text-indigo-600 hover:text-indigo-900"
                       >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Editar
+                        <Edit className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => handleDeleteProduct(product.id)}
-                        className="text-red-600 hover:text-red-900 flex items-center"
+                        className="text-red-600 hover:text-red-900"
                       >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Eliminar
+                        <Trash2 className="h-5 w-5" />
                       </button>
                     </div>
                   </td>
@@ -505,280 +565,278 @@ export default function ProductManager() {
         </div>
       )}
 
-      {/* Modal de producto */}
       {showProductModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900">
-                  {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
-                </h3>
-                <button
-                  onClick={() => setShowProductModal(false)}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <X className="w-6 h-6" />
-                </button>
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h3 className="text-lg font-medium text-gray-900">
+                {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+              </h3>
+              <button
+                onClick={() => setShowProductModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                    Nombre del Producto *
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    value={productForm.name}
+                    onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+                    Categoría
+                  </label>
+                  <input
+                    type="text"
+                    id="category"
+                    value={productForm.category}
+                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+                    Precio *
+                  </label>
+                  <input
+                    type="number"
+                    id="price"
+                    value={productForm.price}
+                    onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="stock" className="block text-sm font-medium text-gray-700">
+                    Stock *
+                  </label>
+                  <input
+                    type="number"
+                    id="stock"
+                    value={productForm.stock}
+                    onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    min="0"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="shipping_days" className="block text-sm font-medium text-gray-700">
+                    Días de Envío
+                  </label>
+                  <input
+                    type="number"
+                    id="shipping_days"
+                    value={productForm.shipping_days}
+                    onChange={(e) => setProductForm({ ...productForm, shipping_days: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    min="0"
+                    placeholder="Ej: 3"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Tiempo estimado de entrega en días</p>
+                </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nombre del producto *
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.name}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Ej: Camiseta de algodón"
-                      required
-                    />
-                  </div>
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                  Descripción *
+                </label>
+                <textarea
+                  id="description"
+                  value={productForm.description}
+                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                  rows={3}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  required
+                />
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Categoría
-                    </label>
-                    <input
-                      type="text"
-                      value={productForm.category}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, category: e.target.value }))}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Ej: Ropa, Electrónica, etc."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Precio *
-                    </label>
-                    <input
-                      type="number"
-                      value={productForm.price}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, price: e.target.value }))}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Ej: 29.99"
-                      min="0"
-                      step="0.01"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Stock *
-                    </label>
-                    <input
-                      type="number"
-                      value={productForm.stock}
-                      onChange={(e) => setProductForm(prev => ({ ...prev, stock: e.target.value }))}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Ej: 100"
-                      min="0"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descripción *
-                  </label>
-                  <textarea
-                    value={productForm.description}
-                    onChange={(e) => setProductForm(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Describe el producto..."
-                    rows={4}
-                    required
-                  ></textarea>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Imágenes del producto *
-                  </label>
-                  <div className="space-y-2">
-                    {productForm.images.map((url, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <input
-                          type="text"
-                          value={url}
-                          onChange={(e) => handleImageUrlChange(index, e.target.value)}
-                          className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                          placeholder="URL de la imagen"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleImageUrlRemove(index)}
-                          className="p-2 text-red-600 hover:text-red-800"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={handleImageUrlAdd}
-                      className="mt-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Agregar imagen
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Colores disponibles
-                  </label>
-                  <div className="space-y-2">
-                    {productForm.available_colors.map((color, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <input
-                          type="text"
-                          value={color}
-                          onChange={(e) => handleColorChange(index, e.target.value)}
-                          className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                          placeholder="Nombre del color (ej: Rojo, Azul, etc.)"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleColorRemove(index)}
-                          className="p-2 text-red-600 hover:text-red-800"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={handleColorAdd}
-                      className="mt-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Agregar color
-                    </button>
-                  </div>
-                </div>
-
-                {productForm.available_colors.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Imágenes por color
-                    </label>
-                    <div className="space-y-4">
-                      {productForm.available_colors.map((color, colorIndex) => (
-                        <div key={colorIndex} className="border border-gray-200 rounded-md p-4">
-                          <h4 className="font-medium mb-2">{color}</h4>
-                          <div className="space-y-2">
-                            {productForm.color_images
-                              .filter(ci => ci.color === color)
-                              .map((ci, imageIndex) => {
-                                const index = productForm.color_images.findIndex(item => item === ci);
-                                return (
-                                  <div key={index} className="flex items-center space-x-2">
-                                    <input
-                                      type="text"
-                                      value={ci.image}
-                                      onChange={(e) => handleColorImageChange(index, e.target.value)}
-                                      className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                                      placeholder={`URL de imagen para ${color}`}
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => handleColorImageRemove(index)}
-                                      className="p-2 text-red-600 hover:text-red-800"
-                                    >
-                                      <X className="w-5 h-5" />
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            <button
-                              type="button"
-                              onClick={() => handleColorImageAdd(color)}
-                              className="mt-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center"
-                            >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Agregar imagen para {color}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Métodos de pago permitidos
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex items-center">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Imágenes del Producto *
+                </label>
+                <div className="space-y-3">
+                  {productForm.images.map((image, index) => (
+                    <div key={index} className="flex items-center space-x-2">
                       <input
-                        type="checkbox"
-                        id="cash_on_delivery"
-                        checked={productForm.allowed_payment_methods.cash_on_delivery}
-                        onChange={(e) => handlePaymentMethodChange('cash_on_delivery', e.target.checked)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        type="text"
+                        value={image}
+                        onChange={(e) => handleImageUrlChange(index, e.target.value)}
+                        placeholder="URL de la imagen"
+                        className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
-                      <label htmlFor="cash_on_delivery" className="ml-2 block text-sm text-gray-900">
-                        Pago contra entrega
-                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleImageUrlRemove(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-full"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
                     </div>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="card"
-                        checked={productForm.allowed_payment_methods.card}
-                        onChange={(e) => handlePaymentMethodChange('card', e.target.checked)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="card" className="ml-2 block text-sm text-gray-900">
-                        Pago con tarjeta
-                      </label>
-                    </div>
-                    {productForm.allowed_payment_methods.card && (
-                      <div className="mt-2">
-                        <label htmlFor="payment_url" className="block text-sm text-gray-700 mb-1">
-                          URL de pago (opcional)
-                        </label>
-                        <input
-                          type="text"
-                          id="payment_url"
-                          value={productForm.allowed_payment_methods.payment_url}
-                          onChange={(e) => handlePaymentUrlChange(e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                          placeholder="URL para el pago con tarj
-eta"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                  ))}
                   <button
                     type="button"
-                    onClick={() => setShowProductModal(false)}
-                    className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                    onClick={handleImageUrlAdd}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Guardar
+                    <Plus className="h-4 w-4 mr-2" />
+                    Añadir Imagen
                   </button>
                 </div>
-              </form>
-            </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Colores Disponibles
+                </label>
+                <div className="space-y-3">
+                  {productForm.available_colors.map((color, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={color}
+                        onChange={(e) => handleColorChange(index, e.target.value)}
+                        placeholder="Nombre del color (ej: Rojo, Azul, etc.)"
+                        className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleColorImageAdd(color)}
+                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full"
+                        title="Añadir imagen para este color"
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleColorRemove(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-full"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleColorAdd}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Añadir Color
+                  </button>
+                </div>
+              </div>
+
+              {productForm.available_colors.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Imágenes por Color
+                  </label>
+                  <div className="space-y-3">
+                    {productForm.color_images.map((colorImage, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <div className="w-1/4">
+                          <span className="text-sm text-gray-500">{colorImage.color}</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={colorImage.image}
+                          onChange={(e) => handleColorImageChange(index, e.target.value)}
+                          placeholder="URL de la imagen para este color"
+                          className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleColorImageRemove(index)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-full"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Métodos de Pago Permitidos
+                </label>
+                <div className="space-y-2">
+                  <div className="flex items-center">
+                    <input
+                      id="cash_on_delivery"
+                      type="checkbox"
+                      checked={productForm.allowed_payment_methods.cash_on_delivery}
+                      onChange={(e) => handlePaymentMethodChange('cash_on_delivery', e.target.checked)}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="cash_on_delivery" className="ml-2 block text-sm text-gray-900">
+                      Pago contra entrega
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      id="card"
+                      type="checkbox"
+                      checked={productForm.allowed_payment_methods.card}
+                      onChange={(e) => handlePaymentMethodChange('card', e.target.checked)}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="card" className="ml-2 block text-sm text-gray-900">
+                      Tarjeta / Pago en línea
+                    </label>
+                  </div>
+                  {productForm.allowed_payment_methods.card && (
+                    <div className="ml-6 mt-2">
+                      <label htmlFor="payment_url" className="block text-sm text-gray-700">
+                        URL de pago (opcional)
+                      </label>
+                      <input
+                        type="text"
+                        id="payment_url"
+                        value={productForm.allowed_payment_methods.payment_url || ''}
+                        onChange={(e) => handlePaymentUrlChange(e.target.value)}
+                        placeholder="https://..."
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-5 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowProductModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Guardar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
