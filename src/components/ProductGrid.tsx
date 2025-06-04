@@ -74,9 +74,11 @@ export function ProductGrid() {
         return methods.cash_on_delivery || methods.card;
       });
 
-      // Load promotions for products
+      // Crear una copia de los productos filtrados para trabajar con ellos
+      let productsWithData = [...filteredProducts];
       const productIds = filteredProducts.map(p => p.id);
       
+      // Load promotions for products
       try {
         const { data: promotionProducts, error: promotionError } = await supabase
           .from('promotion_products')
@@ -91,7 +93,7 @@ export function ProductGrid() {
           
         if (!promotionError && promotionProducts) {
           // Add promotion data to products
-          const productsWithPromotions = filteredProducts.map(product => {
+          productsWithData = productsWithData.map(product => {
             const productPromotion = promotionProducts.find(pp => pp.product_id === product.id);
             if (productPromotion && productPromotion.promotion) {
               return {
@@ -101,14 +103,9 @@ export function ProductGrid() {
             }
             return product;
           });
-          
-          setProducts(productsWithPromotions);
-        } else {
-          setProducts(filteredProducts);
         }
       } catch (error) {
         console.error('Error loading promotions:', error);
-        setProducts(filteredProducts);
       }
 
       // Cargar las calificaciones para cada producto
@@ -132,7 +129,7 @@ export function ProductGrid() {
           });
           
           // Añadir calificaciones a los productos
-          const productsWithRatings = products.map(product => {
+          productsWithData = productsWithData.map(product => {
             const productReviews = reviewsByProduct[product.id];
             if (productReviews) {
               return {
@@ -147,13 +144,14 @@ export function ProductGrid() {
               reviewCount: 0
             };
           });
-          
-          setProducts(productsWithRatings);
         }
       } catch (error) {
         console.error('Error loading reviews:', error);
       }
 
+      // Actualizar el estado con todos los datos cargados
+      setProducts(productsWithData);
+      
       const uniqueCategories = Array.from(new Set(data.map(p => p.category).filter(Boolean)));
       setCategories(uniqueCategories);
     } catch (error: any) {
