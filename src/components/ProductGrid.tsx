@@ -2,15 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { ShoppingCart, Search, Filter, X, Tag } from 'lucide-react';
+import { ShoppingCart, Search, Filter, X, Tag, Star } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
 import type { Product } from '../types/index';
 import { useDebounce } from 'use-debounce';
 
+interface ProductWithRating extends Product {
+  averageRating?: number;
+  reviewCount?: number;
+}
+
 export function ProductGrid() {
   const navigate = useNavigate();
   const cartStore = useCartStore();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithRating[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
@@ -106,6 +111,49 @@ export function ProductGrid() {
         setProducts(filteredProducts);
       }
 
+      // Cargar las calificaciones para cada producto
+      try {
+        const { data: reviewsData, error: reviewsError } = await supabase
+          .from('reviews')
+          .select('product_id, rating')
+          .eq('approved', true)
+          .in('product_id', productIds);
+
+        if (!reviewsError && reviewsData) {
+          // Agrupar reseñas por producto y calcular promedio
+          const reviewsByProduct: Record<string, { sum: number; count: number }> = {};
+          
+          reviewsData.forEach(review => {
+            if (!reviewsByProduct[review.product_id]) {
+              reviewsByProduct[review.product_id] = { sum: 0, count: 0 };
+            }
+            reviewsByProduct[review.product_id].sum += review.rating;
+            reviewsByProduct[review.product_id].count += 1;
+          });
+          
+          // Añadir calificaciones a los productos
+          const productsWithRatings = products.map(product => {
+            const productReviews = reviewsByProduct[product.id];
+            if (productReviews) {
+              return {
+                ...product,
+                averageRating: productReviews.sum / productReviews.count,
+                reviewCount: productReviews.count
+              };
+            }
+            return {
+              ...product,
+              averageRating: 0,
+              reviewCount: 0
+            };
+          });
+          
+          setProducts(productsWithRatings);
+        }
+      } catch (error) {
+        console.error('Error loading reviews:', error);
+      }
+
       const uniqueCategories = Array.from(new Set(data.map(p => p.category).filter(Boolean)));
       setCategories(uniqueCategories);
     } catch (error: any) {
@@ -163,6 +211,25 @@ export function ProductGrid() {
       default:
         return null;
     }
+  };
+
+  // Renderizar estrellas basadas en la calificación
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-4 w-4 ${
+              star <= Math.round(rating)
+                ? 'text-yellow-400'
+                : 'text-gray-300'
+            }`}
+            fill="currentColor"
+          />
+        ))}
+      </div>
+    );
   };
 
   if (loading) {
@@ -262,7 +329,16 @@ export function ProductGrid() {
               )}
             </div>
             <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">{product.name}</h3>
+              
+              {/* Sistema de calificación con estrellas */}
+              <div className="flex items-center mb-2">
+                {renderStars(product.averageRating || 0)}
+                <span className="ml-1 text-xs text-gray-500">
+                  ({product.reviewCount || 0})
+                </span>
+              </div>
+              
               <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
               <div className="flex justify-between items-center">
                 <div className="flex flex-col">
