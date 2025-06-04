@@ -1,0 +1,137 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { Review } from '../types/index';
+import { Star } from 'lucide-react';
+import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
+
+export function HomeReviews() {
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadReviews();
+  }, []);
+
+  const loadReviews = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('reviews')
+        .select(`
+          *,
+          products (
+            name,
+            id,
+            images
+          )
+        `)
+        .eq('approved', true)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setReviews(data || []);
+    } catch (error) {
+      console.error('Error cargando reseñas:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calcular el promedio de calificaciones
+  const averageRating = reviews.length > 0
+    ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
+    : 0;
+
+  // Renderizar estrellas basadas en la calificación
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-4 w-4 ${
+              star <= rating
+                ? 'text-yellow-400'
+                : 'text-gray-300'
+            }`}
+            fill="currentColor"
+          />
+        ))}
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+        <div className="space-y-3">
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (reviews.length === 0) {
+    return null; // No mostrar la sección si no hay reseñas
+  }
+
+  return (
+    <div className="bg-white py-8 sm:py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
+            Lo que opinan nuestros clientes
+          </h2>
+          <div className="flex items-center justify-center mt-4">
+            {renderStars(Math.round(averageRating))}
+            <span className="ml-2 text-sm text-gray-600">
+              {averageRating.toFixed(1)} de 5 ({reviews.length} opiniones)
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-10">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {reviews.map((review) => (
+              <div key={review.id} className="bg-gray-50 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+                <div className="p-6">
+                  <div className="flex items-center mb-4">
+                    {(review as any).products?.images && (review as any).products.images.length > 0 && (
+                      <Link to={`/product/${(review as any).products.id}`} className="flex-shrink-0">
+                        <img 
+                          src={(review as any).products.images[0]} 
+                          alt={(review as any).products.name} 
+                          className="h-12 w-12 object-cover rounded-md"
+                        />
+                      </Link>
+                    )}
+                    <div className="ml-3">
+                      <Link 
+                        to={`/product/${(review as any).products.id}`}
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-500 truncate"
+                      >
+                        {(review as any).products?.name || 'Producto'}
+                      </Link>
+                      <div className="mt-1">
+                        {renderStars(review.rating)}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 line-clamp-3 mb-2">{review.comment}</p>
+                  <div className="flex justify-between items-center mt-4 text-xs text-gray-500">
+                    <span>{review.name || 'Usuario'}</span>
+                    <span>{format(new Date(review.created_at), 'dd/MM/yyyy')}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

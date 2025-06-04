@@ -7,6 +7,7 @@ import { ProductGrid } from './ProductGrid';
 import { Cart } from './Cart';
 import { useCompanySettings } from '../hooks/useCompanySettings';
 import { AuthRequiredModal } from './AuthRequiredModal';
+import { HomeReviews } from './HomeReviews';
 
 export default function Home() {
   const { user, signOut } = useAuthStore();
@@ -180,7 +181,11 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <ProductGrid />
+          <>
+            <ProductGrid />
+            {/* Sección de reseñas en la página inicial */}
+            <HomeReviews />
+          </>
         )}
       </main>
 
