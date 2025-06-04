@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { toast } from 'react-hot-toast';
+import { useAuthStore } from '../stores/authStore';
 import { Review } from '../types/index';
-import { Check, X, Star, Search, RefreshCw, Plus } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Star, Search, RefreshCw, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function ReviewManager() {
+  const { user } = useAuthStore();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'all'>('pending');
@@ -14,7 +16,7 @@ export default function ReviewManager() {
   const [products, setProducts] = useState<{id: string, name: string}[]>([]);
   const [newReview, setNewReview] = useState({
     product_id: '',
-    user_name: '', // Cambiado de 'name' a 'user_name'
+    name: '',
     rating: 5,
     comment: '',
     approved: true
@@ -34,6 +36,10 @@ export default function ReviewManager() {
 
       if (error) throw error;
       setProducts(data || []);
+      
+      if (data && data.length > 0) {
+        setNewReview(prev => ({ ...prev, product_id: data[0].id }));
+      }
     } catch (error) {
       console.error('Error loading products:', error);
       toast.error('Error al cargar los productos');
@@ -108,9 +114,7 @@ export default function ReviewManager() {
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta reseña?')) {
-      return;
-    }
+    if (!confirm('¿Estás seguro de que quieres eliminar esta reseña?')) return;
 
     try {
       const { error } = await supabase
@@ -120,7 +124,7 @@ export default function ReviewManager() {
 
       if (error) throw error;
       
-      setReviews(prev => prev.filter(review => review.id !== reviewId));
+      setReviews(prev => prev.filter(r => r.id !== reviewId));
       toast.success('Reseña eliminada');
     } catch (error) {
       console.error('Error deleting review:', error);
@@ -131,12 +135,17 @@ export default function ReviewManager() {
   const handleCreateReview = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      toast.error('Debes estar autenticado para crear reseñas');
+      return;
+    }
+
     if (!newReview.product_id) {
       toast.error('Debes seleccionar un producto');
       return;
     }
 
-    if (!newReview.user_name) { // Cambiado de 'name' a 'user_name'
+    if (!newReview.name) {
       toast.error('Debes ingresar un nombre de usuario');
       return;
     }
@@ -147,49 +156,38 @@ export default function ReviewManager() {
     }
 
     try {
-      // Crear objeto con solo los campos necesarios para la tabla reviews
       const reviewData = {
         product_id: newReview.product_id,
-        user_name: newReview.user_name, // Cambiado de 'name' a 'user_name'
+        user_id: user.id,
+        name: newReview.name,
         rating: newReview.rating,
         comment: newReview.comment,
         approved: newReview.approved,
         created_at: new Date().toISOString()
       };
 
-      // Insertar la reseña
       const { error: insertError } = await supabase
         .from('reviews')
-        .insert(reviewData);
+        .insert([reviewData]);
 
       if (insertError) throw insertError;
       
-      // Cargar la reseña recién creada con los datos del producto
-      const { data: newReviewData, error: fetchError } = await supabase
-        .from('reviews')
-        .select(`
-          *,
-          products (
-            name
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (fetchError) throw fetchError;
+      toast.success('Reseña creada con éxito');
       
-      if (newReviewData && newReviewData.length > 0) {
-        setReviews(prev => [newReviewData[0], ...prev]);
-        toast.success('Reseña creada con éxito');
-        setNewReview({
-          product_id: '',
-          user_name: '', // Cambiado de 'name' a 'user_name'
-          rating: 5,
-          comment: '',
-          approved: true
-        });
-        setShowCreateForm(false);
-      }
+      // Reset form
+      setNewReview({
+        product_id: products[0]?.id || '',
+        name: '',
+        rating: 5,
+        comment: '',
+        approved: true
+      });
+      
+      setShowCreateForm(false);
+      
+      // Reload reviews to show the new one
+      await loadReviews();
+      
     } catch (error: any) {
       console.error('Error creating review:', error);
       toast.error(`Error al crear la reseña: ${error.message || 'Intente nuevamente'}`);
@@ -205,7 +203,7 @@ export default function ReviewManager() {
     const matchesSearch =
       searchTerm === '' ||
       review.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) || // Cambiado de 'name' a 'user_name'
+      review.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (review as any).products?.name.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesFilter && matchesSearch;
@@ -272,8 +270,8 @@ export default function ReviewManager() {
               <input
                 type="text"
                 id="username"
-                value={newReview.user_name} // Cambiado de 'name' a 'user_name'
-                onChange={(e) => setNewReview(prev => ({ ...prev, user_name: e.target.value }))} // Cambiado de 'name' a 'user_name'
+                value={newReview.name}
+                onChange={(e) => setNewReview(prev => ({ ...prev, name: e.target.value }))}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Ej: María López"
                 required
@@ -415,7 +413,7 @@ export default function ReviewManager() {
                         ))}
                       </div>
                       <p className="ml-2 text-sm text-gray-500">
-                        por {review.user_name || 'Usuario anónimo'} {/* Cambiado de 'name' a 'user_name' */}
+                        por {review.name || 'Usuario anónimo'}
                       </p>
                     </div>
                     <p className="mt-1 text-sm text-gray-900">{review.comment}</p>
@@ -430,7 +428,7 @@ export default function ReviewManager() {
                       onClick={() => handleApproveReview(review.id)}
                       className="p-1 rounded-full text-green-600 hover:bg-green-100"
                     >
-                      <Check className="h-5 w-5" />
+                      <Star className="h-5 w-5" />
                     </button>
                   )}
                   {review.approved && (
@@ -438,14 +436,14 @@ export default function ReviewManager() {
                       onClick={() => handleRejectReview(review.id)}
                       className="p-1 rounded-full text-yellow-600 hover:bg-yellow-100"
                     >
-                      <X className="h-5 w-5" />
+                      <Star className="h-5 w-5" />
                     </button>
                   )}
                   <button
                     onClick={() => handleDeleteReview(review.id)}
                     className="p-1 rounded-full text-red-600 hover:bg-red-100"
                   >
-                    <X className="h-5 w-5" />
+                    <Star className="h-5 w-5" />
                   </button>
                 </div>
               </div>
