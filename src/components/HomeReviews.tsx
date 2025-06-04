@@ -52,7 +52,7 @@ export function HomeReviews() {
           <Star
             key={star}
             className={`h-4 w-4 ${
-              star <= rating
+              star <= Math.round(rating)
                 ? 'text-yellow-400'
                 : 'text-gray-300'
             }`}
@@ -87,7 +87,7 @@ export function HomeReviews() {
             Lo que opinan nuestros clientes
           </h2>
           <div className="flex items-center justify-center mt-4">
-            {renderStars(Math.round(averageRating))}
+            {renderStars(averageRating)}
             <span className="ml-2 text-sm text-gray-600">
               {averageRating.toFixed(1)} de 5 ({reviews.length} opiniones)
             </span>
@@ -123,7 +123,7 @@ export function HomeReviews() {
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-3 mb-2">{review.comment}</p>
                   <div className="flex justify-between items-center mt-4 text-xs text-gray-500">
-                    <span>{review.name || 'Usuario'}</span>
+                    <span>{review.Name || review.name || 'Usuario anónimo'}</span>
                     <span>{format(new Date(review.created_at), 'dd/MM/yyyy')}</span>
                   </div>
                 </div>
