@@ -14,7 +14,7 @@ export default function ReviewManager() {
   const [products, setProducts] = useState<{id: string, name: string}[]>([]);
   const [newReview, setNewReview] = useState({
     product_id: '',
-    user_name: '', // Cambiado de 'name' a 'user_name'
+    Name: '', // Cambiado a 'Name' con N mayúscula
     rating: 5,
     comment: '',
     approved: true
@@ -136,7 +136,7 @@ export default function ReviewManager() {
       return;
     }
 
-    if (!newReview.user_name) { // Cambiado de 'name' a 'user_name'
+    if (!newReview.Name) { // Cambiado a 'Name' con N mayúscula
       toast.error('Debes ingresar un nombre de usuario');
       return;
     }
@@ -150,19 +150,24 @@ export default function ReviewManager() {
       // Crear objeto con solo los campos necesarios para la tabla reviews
       const reviewData = {
         product_id: newReview.product_id,
-        user_name: newReview.user_name, // Cambiado de 'name' a 'user_name'
+        Name: newReview.Name, // Cambiado a 'Name' con N mayúscula
         rating: newReview.rating,
         comment: newReview.comment,
         approved: newReview.approved,
         created_at: new Date().toISOString()
       };
 
+      console.log('Enviando datos de reseña:', reviewData);
+
       // Insertar la reseña
       const { error: insertError } = await supabase
         .from('reviews')
         .insert(reviewData);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Error de inserción:', insertError);
+        throw insertError;
+      }
       
       // Cargar la reseña recién creada con los datos del producto
       const { data: newReviewData, error: fetchError } = await supabase
@@ -183,7 +188,7 @@ export default function ReviewManager() {
         toast.success('Reseña creada con éxito');
         setNewReview({
           product_id: '',
-          user_name: '', // Cambiado de 'name' a 'user_name'
+          Name: '', // Cambiado a 'Name' con N mayúscula
           rating: 5,
           comment: '',
           approved: true
@@ -205,7 +210,7 @@ export default function ReviewManager() {
     const matchesSearch =
       searchTerm === '' ||
       review.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) || // Cambiado de 'name' a 'user_name'
+      review.Name?.toLowerCase().includes(searchTerm.toLowerCase()) || // Cambiado a 'Name' con N mayúscula
       (review as any).products?.name.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesFilter && matchesSearch;
@@ -272,8 +277,8 @@ export default function ReviewManager() {
               <input
                 type="text"
                 id="username"
-                value={newReview.user_name} // Cambiado de 'name' a 'user_name'
-                onChange={(e) => setNewReview(prev => ({ ...prev, user_name: e.target.value }))} // Cambiado de 'name' a 'user_name'
+                value={newReview.Name} // Cambiado a 'Name' con N mayúscula
+                onChange={(e) => setNewReview(prev => ({ ...prev, Name: e.target.value }))} // Cambiado a 'Name' con N mayúscula
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Ej: María López"
                 required
@@ -415,7 +420,7 @@ export default function ReviewManager() {
                         ))}
                       </div>
                       <p className="ml-2 text-sm text-gray-500">
-                        por {review.user_name || 'Usuario anónimo'} {/* Cambiado de 'name' a 'user_name' */}
+                        por {review.Name || 'Usuario anónimo'} {/* Cambiado a 'Name' con N mayúscula */}
                       </p>
                     </div>
                     <p className="mt-1 text-sm text-gray-900">{review.comment}</p>
