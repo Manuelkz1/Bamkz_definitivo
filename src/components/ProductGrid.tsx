@@ -174,6 +174,13 @@ export function ProductGrid() {
     navigate(`/product/${product.id}`);
   };
 
+  // Función para navegar a las reseñas del producto
+  const handleViewReviews = (productId: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    navigate(`/product/${productId}#reviews`);
+  };
+
   const clearFilters = () => {
     setSearchInput('');
     setSelectedCategory('');
@@ -212,9 +219,12 @@ export function ProductGrid() {
   };
 
   // Renderizar estrellas basadas en la calificación
-  const renderStars = (rating: number) => {
+  const renderStars = (rating: number, productId: string) => {
     return (
-      <div className="flex">
+      <div 
+        className="flex cursor-pointer" 
+        onClick={(e) => handleViewReviews(productId, e)}
+      >
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
@@ -329,10 +339,13 @@ export function ProductGrid() {
             <div className="p-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-1">{product.name}</h3>
               
-              {/* Sistema de calificación con estrellas */}
+              {/* Sistema de calificación con estrellas - ahora clickeable */}
               <div className="flex items-center mb-2">
-                {renderStars(product.averageRating || 0)}
-                <span className="ml-1 text-xs text-gray-500">
+                {renderStars(product.averageRating || 0, product.id)}
+                <span 
+                  className="ml-1 text-xs text-gray-500 cursor-pointer"
+                  onClick={(e) => handleViewReviews(product.id, e)}
+                >
                   ({product.reviewCount || 0})
                 </span>
               </div>

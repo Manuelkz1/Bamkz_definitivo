@@ -91,7 +91,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
         .insert({
           product_id: productId,
           user_id: user.id,
-          name: user.full_name || 'Usuario',
+          Name: user.full_name || 'Usuario', // Cambiado a 'Name' con N mayúscula
           rating: newReview.rating,
           comment: newReview.comment,
           approved: false
@@ -125,7 +125,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
   }
 
   return (
-    <div className="mt-8">
+    <div className="mt-8" id="reviews">
       <h3 className="text-lg font-medium text-gray-900 mb-4">
         Opiniones de clientes
       </h3>
@@ -167,7 +167,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
                     ))}
                   </div>
                   <span className="ml-2 text-sm font-medium text-gray-900">
-                    {review.name || 'Usuario'}
+                    {review.Name || 'Usuario anónimo'} {/* Cambiado a 'Name' con N mayúscula */}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-1">{review.comment}</p>
