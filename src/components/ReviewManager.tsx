@@ -147,23 +147,39 @@ export default function ReviewManager() {
     }
 
     try {
-      const { data, error } = await supabase
+      // Crear objeto con solo los campos necesarios para la tabla reviews
+      const reviewData = {
+        product_id: newReview.product_id,
+        name: newReview.name,
+        rating: newReview.rating,
+        comment: newReview.comment,
+        approved: newReview.approved,
+        created_at: new Date().toISOString()
+      };
+
+      // Insertar la reseña
+      const { data: insertedData, error: insertError } = await supabase
         .from('reviews')
-        .insert({
-          ...newReview,
-          created_at: new Date().toISOString()
-        })
+        .insert(reviewData);
+
+      if (insertError) throw insertError;
+      
+      // Cargar la reseña recién creada con los datos del producto
+      const { data: newReviewData, error: fetchError } = await supabase
+        .from('reviews')
         .select(`
           *,
           products (
             name
           )
-        `);
+        `)
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       
-      if (data && data.length > 0) {
-        setReviews(prev => [data[0], ...prev]);
+      if (newReviewData && newReviewData.length > 0) {
+        setReviews(prev => [newReviewData[0], ...prev]);
         toast.success('Reseña creada con éxito');
         setNewReview({
           product_id: '',
@@ -174,9 +190,9 @@ export default function ReviewManager() {
         });
         setShowCreateForm(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating review:', error);
-      toast.error('Error al crear la reseña');
+      toast.error(`Error al crear la reseña: ${error.message || 'Intente nuevamente'}`);
     }
   };
 
