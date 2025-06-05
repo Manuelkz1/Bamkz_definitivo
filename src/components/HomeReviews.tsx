@@ -50,6 +50,10 @@ export function HomeReviews() {
         .limit(10);
 
       if (error) throw error;
+      
+      // Log para depuración
+      console.log('Reviews cargadas:', data);
+      
       setReviews(data || []);
     } catch (error) {
       console.error('Error cargando reseñas:', error);
@@ -82,10 +86,16 @@ export function HomeReviews() {
   const renderStars = (rating: any) => {
     const normalizedRating = normalizeRating(rating);
     
+    // Log para depuración
+    console.log('Rating original:', rating, 'Rating normalizado:', normalizedRating);
+    
     return (
       <div className="flex">
         {[1, 2, 3, 4, 5].map((star) => (
-          <StarIcon key={star} filled={star <= Math.round(normalizedRating)} />
+          <StarIcon 
+            key={star} 
+            filled={star <= normalizedRating} 
+          />
         ))}
       </div>
     );
