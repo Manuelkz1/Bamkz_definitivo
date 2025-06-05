@@ -150,10 +150,13 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
   const renderStars = (rating: any) => {
     const normalizedRating = normalizeRating(rating);
     
+    // Aseguramos que el rating sea un número entre 0 y 5
+    const safeRating = Math.min(Math.max(normalizedRating, 0), 5);
+    
     return (
       <div className="flex">
         {[1, 2, 3, 4, 5].map((star) => (
-          <StarIcon key={star} filled={star <= Math.round(normalizedRating)} />
+          <StarIcon key={star} filled={star <= safeRating} />
         ))}
       </div>
     );
@@ -196,7 +199,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
                     {renderStars(review.rating)}
                   </div>
                   <span className="ml-2 text-sm font-medium text-gray-900">
-                    {review.Name || 'Usuario anónimo'} {/* Cambiado a 'Name' con N mayúscula */}
+                    {review.Name || ''} {/* Cambiado a 'Name' con N mayúscula */}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-1">{review.comment}</p>

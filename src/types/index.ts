@@ -81,7 +81,7 @@ export interface Review {
   rating: number;
   comment: string;
   created_at: string;
-  name: string; // Changed from optional to required
+  Name: string; // Cambiado a 'Name' con N mayúscula para coincidir con la base de datos
   approved?: boolean;
 }
 

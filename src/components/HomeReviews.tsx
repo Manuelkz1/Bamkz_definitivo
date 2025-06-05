@@ -89,12 +89,15 @@ export function HomeReviews() {
     // Log para depuración
     console.log('Rating original:', rating, 'Rating normalizado:', normalizedRating);
     
+    // Aseguramos que el rating sea un número entre 0 y 5
+    const safeRating = Math.min(Math.max(normalizedRating, 0), 5);
+    
     return (
       <div className="flex">
         {[1, 2, 3, 4, 5].map((star) => (
           <StarIcon 
             key={star} 
-            filled={star <= normalizedRating} 
+            filled={star <= safeRating} 
           />
         ))}
       </div>
@@ -161,7 +164,7 @@ export function HomeReviews() {
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-3 mb-2">{review.comment}</p>
                   <div className="flex justify-between items-center mt-4 text-xs text-gray-500">
-                    <span>{review.Name || 'Usuario anónimo'}</span>
+                    <span>{review.Name || ''}</span>
                     <span>{format(new Date(review.created_at), 'dd/MM/yyyy')}</span>
                   </div>
                 </div>
