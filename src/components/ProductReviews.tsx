@@ -2,13 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
 import { Review } from '../types/index';
-import { Star, StarHalf } from 'lucide-react';
-import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
+import { toast } from 'react-hot-toast';
 
 interface ProductReviewsProps {
   productId: string;
 }
+
+// Componente de estrella personalizado que garantiza el relleno visual
+const StarIcon = ({ filled }: { filled: boolean }) => {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="16" 
+      height="16" 
+      viewBox="0 0 24 24" 
+      fill={filled ? "#FBBF24" : "none"} 
+      stroke="#FBBF24" 
+      strokeWidth="1.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      className="h-4 w-4"
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+};
 
 export function ProductReviews({ productId }: ProductReviewsProps) {
   const { user } = useAuthStore();
@@ -134,15 +153,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
     return (
       <div className="flex">
         {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`h-4 w-4 ${
-              star <= Math.round(normalizedRating)
-                ? 'text-yellow-400'
-                : 'text-gray-300'
-            }`}
-            fill="currentColor"
-          />
+          <StarIcon key={star} filled={star <= Math.round(normalizedRating)} />
         ))}
       </div>
     );
@@ -170,17 +181,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
         <div>
           <div className="flex items-center mb-4">
             <div className="flex items-center">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star
-                  key={star}
-                  className={`h-5 w-5 ${
-                    star <= Math.round(normalizeRating(averageRating))
-                      ? 'text-yellow-400'
-                      : 'text-gray-300'
-                  }`}
-                  fill="currentColor"
-                />
-              ))}
+              {renderStars(averageRating)}
             </div>
             <span className="ml-2 text-sm text-gray-600">
               {normalizeRating(averageRating).toFixed(1)} de 5 ({reviews.length} opiniones)
@@ -192,17 +193,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
               <div key={review.id} className="border-b border-gray-200 pb-4">
                 <div className="flex items-center mb-2">
                   <div className="flex items-center">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`h-4 w-4 ${
-                          star <= normalizeRating(review.rating)
-                            ? 'text-yellow-400'
-                            : 'text-gray-300'
-                        }`}
-                        fill="currentColor"
-                      />
-                    ))}
+                    {renderStars(review.rating)}
                   </div>
                   <span className="ml-2 text-sm font-medium text-gray-900">
                     {review.Name || 'Usuario anónimo'} {/* Cambiado a 'Name' con N mayúscula */}
@@ -240,14 +231,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
                     onClick={() => setNewReview(prev => ({ ...prev, rating: star }))}
                     className="p-1 focus:outline-none"
                   >
-                    <Star
-                      className={`h-6 w-6 ${
-                        star <= newReview.rating
-                          ? 'text-yellow-400'
-                          : 'text-gray-300'
-                      }`}
-                      fill="currentColor"
-                    />
+                    <StarIcon filled={star <= newReview.rating} />
                   </button>
                 ))}
               </div>

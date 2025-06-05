@@ -1,9 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Review } from '../types/index';
-import { Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
+
+// Componente de estrella personalizado que garantiza el relleno visual
+const StarIcon = ({ filled }: { filled: boolean }) => {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="16" 
+      height="16" 
+      viewBox="0 0 24 24" 
+      fill={filled ? "#FBBF24" : "none"} 
+      stroke="#FBBF24" 
+      strokeWidth="1.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      className="h-4 w-4"
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+};
 
 export function HomeReviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -66,15 +85,7 @@ export function HomeReviews() {
     return (
       <div className="flex">
         {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`h-4 w-4 ${
-              star <= Math.round(normalizedRating)
-                ? 'text-yellow-400'
-                : 'text-gray-300'
-            }`}
-            fill="currentColor"
-          />
+          <StarIcon key={star} filled={star <= Math.round(normalizedRating)} />
         ))}
       </div>
     );
