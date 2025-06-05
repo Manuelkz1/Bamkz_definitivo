@@ -408,3 +408,6 @@ export function ProductManager() {
     </div>
   );
 }
+
+// Añadir exportación predeterminada para resolver el error de importación en AdminPanel.tsx
+export default ProductManager;
