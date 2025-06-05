@@ -108,9 +108,45 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
     }
   };
 
+  // Función para normalizar el rating y asegurar que siempre sea un número válido
+  const normalizeRating = (rating: any): number => {
+    // Si es undefined o null, devolver 0
+    if (rating === undefined || rating === null) return 0;
+    
+    // Si es un string, convertir a número
+    const numRating = typeof rating === 'string' ? parseFloat(rating) : Number(rating);
+    
+    // Verificar si es un número válido
+    if (isNaN(numRating)) return 0;
+    
+    // Limitar entre 0 y 5
+    return Math.min(Math.max(numRating, 0), 5);
+  };
+
   const averageRating = reviews.length > 0
-    ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
+    ? reviews.reduce((acc, review) => acc + normalizeRating(review.rating), 0) / reviews.length
     : 0;
+
+  // Renderizar estrellas basadas en la calificación normalizada
+  const renderStars = (rating: any) => {
+    const normalizedRating = normalizeRating(rating);
+    
+    return (
+      <div className="flex">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-4 w-4 ${
+              star <= Math.round(normalizedRating)
+                ? 'text-yellow-400'
+                : 'text-gray-300'
+            }`}
+            fill="currentColor"
+          />
+        ))}
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -138,15 +174,16 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
                 <Star
                   key={star}
                   className={`h-5 w-5 ${
-                    star <= Math.round(averageRating)
+                    star <= Math.round(normalizeRating(averageRating))
                       ? 'text-yellow-400'
                       : 'text-gray-300'
                   }`}
+                  fill="currentColor"
                 />
               ))}
             </div>
             <span className="ml-2 text-sm text-gray-600">
-              {averageRating.toFixed(1)} de 5 ({reviews.length} opiniones)
+              {normalizeRating(averageRating).toFixed(1)} de 5 ({reviews.length} opiniones)
             </span>
           </div>
 
@@ -159,10 +196,11 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
                       <Star
                         key={star}
                         className={`h-4 w-4 ${
-                          star <= review.rating
+                          star <= normalizeRating(review.rating)
                             ? 'text-yellow-400'
                             : 'text-gray-300'
                         }`}
+                        fill="currentColor"
                       />
                     ))}
                   </div>
@@ -208,6 +246,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
                           ? 'text-yellow-400'
                           : 'text-gray-300'
                       }`}
+                      fill="currentColor"
                     />
                   </button>
                 ))}

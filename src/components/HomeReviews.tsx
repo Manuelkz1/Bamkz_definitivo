@@ -39,20 +39,37 @@ export function HomeReviews() {
     }
   };
 
+  // Función para normalizar el rating y asegurar que siempre sea un número válido
+  const normalizeRating = (rating: any): number => {
+    // Si es undefined o null, devolver 0
+    if (rating === undefined || rating === null) return 0;
+    
+    // Si es un string, convertir a número
+    const numRating = typeof rating === 'string' ? parseFloat(rating) : Number(rating);
+    
+    // Verificar si es un número válido
+    if (isNaN(numRating)) return 0;
+    
+    // Limitar entre 0 y 5
+    return Math.min(Math.max(numRating, 0), 5);
+  };
+
   // Calcular el promedio de calificaciones
   const averageRating = reviews.length > 0
-    ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
+    ? reviews.reduce((acc, review) => acc + normalizeRating(review.rating), 0) / reviews.length
     : 0;
 
   // Renderizar estrellas basadas en la calificación
-  const renderStars = (rating: number) => {
+  const renderStars = (rating: any) => {
+    const normalizedRating = normalizeRating(rating);
+    
     return (
       <div className="flex">
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
             className={`h-4 w-4 ${
-              star <= Math.round(rating)
+              star <= Math.round(normalizedRating)
                 ? 'text-yellow-400'
                 : 'text-gray-300'
             }`}
@@ -89,7 +106,7 @@ export function HomeReviews() {
           <div className="flex items-center justify-center mt-4">
             {renderStars(averageRating)}
             <span className="ml-2 text-sm text-gray-600">
-              {averageRating.toFixed(1)} de 5 ({reviews.length} opiniones)
+              {normalizeRating(averageRating).toFixed(1)} de 5 ({reviews.length} opiniones)
             </span>
           </div>
         </div>
@@ -123,7 +140,7 @@ export function HomeReviews() {
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-3 mb-2">{review.comment}</p>
                   <div className="flex justify-between items-center mt-4 text-xs text-gray-500">
-                    <span>{review.Name || review.name || 'Usuario anónimo'}</span>
+                    <span>{review.Name || 'Usuario anónimo'}</span>
                     <span>{format(new Date(review.created_at), 'dd/MM/yyyy')}</span>
                   </div>
                 </div>
