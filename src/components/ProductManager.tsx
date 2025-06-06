@@ -289,7 +289,7 @@ export function ProductManager() {
                     <div className="flex items-center">
                       {product.images && product.images.length > 0 && (
                         <div className="flex-shrink-0 h-10 w-10">
-                          <img className="h-10 w-10 rounded-full object-cover" src={product.images[0]} alt="" />
+                          <img className="h-10 w-10 rounded-full object-cover\" src={product.images[0]} alt="" />
                         </div>
                       )}
                       <div className="ml-4">
