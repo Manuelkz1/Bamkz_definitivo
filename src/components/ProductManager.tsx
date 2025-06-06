@@ -102,12 +102,29 @@ export function ProductManager() {
 
   const startEditingShippingDays = (product: Product) => {
     setEditingShippingDays(product.id);
-    setShippingDaysValue(product.shipping_days?.toString() || '');
+    
+    // Intentar obtener los días de envío del campo shipping_days
+    if (product.shipping_days) {
+      setShippingDaysValue(product.shipping_days.toString());
+      return;
+    }
+    
+    // Si no existe, intentar extraerlo de la descripción
+    if (product.description) {
+      const match = product.description.match(/\[shipping_days:(\d+)\]/);
+      if (match && match[1]) {
+        setShippingDaysValue(match[1]);
+        return;
+      }
+    }
+    
+    // Si no se encuentra en ningún lado, establecer valor vacío
+    setShippingDaysValue('');
   };
 
   const saveShippingDays = async (productId: string) => {
     try {
-      // Convertir el valor a número antes de enviarlo a la base de datos
+      // Convertir el valor a número antes de procesarlo
       const shippingDaysNumber = parseInt(shippingDaysValue, 10);
       
       // Verificar si es un número válido
@@ -116,9 +133,35 @@ export function ProductManager() {
         return;
       }
       
+      // Encontrar el producto actual
+      const currentProduct = products.find(p => p.id === productId);
+      if (!currentProduct) {
+        toast.error('Producto no encontrado');
+        return;
+      }
+      
+      // Preparar la descripción actualizada
+      let updatedDescription = currentProduct.description || '';
+      
+      // Eliminar cualquier etiqueta de shipping_days existente
+      updatedDescription = updatedDescription.replace(/\[shipping_days:\d+\]/g, '');
+      
+      // Añadir la nueva etiqueta de shipping_days
+      updatedDescription = updatedDescription + `\n[shipping_days:${shippingDaysNumber}]`;
+      
+      // Limpiar espacios en blanco múltiples
+      updatedDescription = updatedDescription.trim();
+      
+      // Crear un objeto con los datos actualizados
+      const updatedProduct = {
+        ...currentProduct,
+        description: updatedDescription
+      };
+      
+      // Actualizar el producto en la base de datos
       const { error } = await supabase
         .from('products')
-        .update({ shipping_days: shippingDaysNumber })
+        .update({ description: updatedProduct.description })
         .eq('id', productId);
 
       if (error) throw error;
@@ -126,7 +169,7 @@ export function ProductManager() {
       // Actualizar el estado local
       setProducts(products.map(p => 
         p.id === productId 
-          ? { ...p, shipping_days: shippingDaysNumber } 
+          ? { ...p, shipping_days: shippingDaysNumber, description: updatedProduct.description } 
           : p
       ));
       
@@ -136,6 +179,24 @@ export function ProductManager() {
       console.error('Error updating shipping days:', error);
       toast.error('Error al actualizar los días de envío');
     }
+  };
+
+  const getShippingDaysDisplay = (product: Product) => {
+    // Intentar obtener los días de envío del campo shipping_days
+    if (product.shipping_days) {
+      return `${product.shipping_days} días`;
+    }
+    
+    // Si no existe, intentar extraerlo de la descripción
+    if (product.description) {
+      const match = product.description.match(/\[shipping_days:(\d+)\]/);
+      if (match && match[1]) {
+        return `${match[1]} días`;
+      }
+    }
+    
+    // Si no se encuentra en ningún lado, mostrar "No especificado"
+    return 'No especificado';
   };
 
   if (loading) {
@@ -382,7 +443,7 @@ export function ProductManager() {
                     ) : (
                       <div className="flex items-center">
                         <span className="text-sm text-gray-900">
-                          {product.shipping_days ? `${product.shipping_days} días` : 'No especificado'}
+                          {getShippingDaysDisplay(product)}
                         </span>
                         <button
                           onClick={() => startEditingShippingDays(product)}
