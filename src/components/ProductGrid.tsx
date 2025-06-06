@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { ShoppingCart, Search, Filter, X, Tag, Star } from 'lucide-react';
+import { ShoppingCart, Search, Filter, X, Tag, Star, Truck } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
 import type { Product } from '../types/index';
 import { useDebounce } from 'use-debounce';
@@ -351,6 +351,13 @@ export function ProductGrid() {
               </div>
               
               <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
+              
+              {/* Días de envío */}
+              <div className="flex items-center text-sm text-gray-600 mb-2">
+                <Truck className="h-4 w-4 mr-1 text-indigo-500" />
+                <span>Llega en {product.shipping_days || 3} días</span>
+              </div>
+              
               <div className="flex justify-between items-center">
                 <div className="flex flex-col">
                   {product.promotion ? (
@@ -396,3 +403,4 @@ export function ProductGrid() {
     </div>
   );
 }
+
