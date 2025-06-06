@@ -107,9 +107,18 @@ export function ProductManager() {
 
   const saveShippingDays = async (productId: string) => {
     try {
+      // Convertir el valor a número antes de enviarlo a la base de datos
+      const shippingDaysNumber = parseInt(shippingDaysValue, 10);
+      
+      // Verificar si es un número válido
+      if (isNaN(shippingDaysNumber)) {
+        toast.error('Por favor ingresa un número válido para los días de envío');
+        return;
+      }
+      
       const { error } = await supabase
         .from('products')
-        .update({ shipping_days: shippingDaysValue })
+        .update({ shipping_days: shippingDaysNumber })
         .eq('id', productId);
 
       if (error) throw error;
@@ -117,7 +126,7 @@ export function ProductManager() {
       // Actualizar el estado local
       setProducts(products.map(p => 
         p.id === productId 
-          ? { ...p, shipping_days: shippingDaysValue } 
+          ? { ...p, shipping_days: shippingDaysNumber } 
           : p
       ));
       
