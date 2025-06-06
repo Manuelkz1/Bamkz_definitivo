@@ -11,7 +11,7 @@ import GuestCheckout from './components/GuestCheckout';
 import { AdminPanel } from './components/AdminPanel';
 import OrderDetails from './components/OrderDetails';
 import MyOrdersPage from './pages/MyOrdersPage';
-import { PaymentStatus } from './components/PaymentStatus'; // Importar PaymentStatus
+import { PaymentStatus } from './components/PaymentStatus';
 
 // Componente para manejar el callback de autenticación
 const AuthCallback = () => {
@@ -92,7 +92,7 @@ function App() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
-        {/* Agregar la ruta faltante para el estado de pago */}
+        {/* Ruta crítica para manejar estados de pago - SOLUCIONA PROBLEMA DE PANTALLA EN BLANCO */}
         <Route path="/pago" element={<PaymentStatus />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
