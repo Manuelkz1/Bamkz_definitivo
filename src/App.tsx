@@ -11,6 +11,7 @@ import GuestCheckout from './components/GuestCheckout';
 import { AdminPanel } from './components/AdminPanel';
 import OrderDetails from './components/OrderDetails';
 import MyOrdersPage from './pages/MyOrdersPage';
+import { PaymentStatus } from './components/PaymentStatus'; // Importar PaymentStatus
 
 // Componente para manejar el callback de autenticación
 const AuthCallback = () => {
@@ -49,7 +50,7 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
 
   // Si la ruta es solo para admin y el usuario no es admin, redirigir a la página principal
   if (adminOnly && user.role !== 'admin') {
-    return <Navigate to="\" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Si el usuario está autenticado y tiene los permisos necesarios, mostrar el contenido
@@ -72,11 +73,7 @@ function App() {
         <Route path="/product/:id" element={<ProductPage />} />
         <Route path="/products/:id" element={<ProductPage />} />
         <Route path="/cart" element={<Cart />} />
-        <Route path="/checkout" element={
-          <ProtectedRoute>
-            <GuestCheckout />
-          </ProtectedRoute>
-        } />
+        <Route path="/checkout" element={<GuestCheckout />} />
         <Route path="/my-orders" element={
           <ProtectedRoute>
             <MyOrdersPage />
@@ -94,7 +91,11 @@ function App() {
         } />
         <Route path="/auth" element={<Auth />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="*" element={<Navigate to="/\" replace />} />
+
+        {/* Agregar la ruta faltante para el estado de pago */}
+        <Route path="/pago" element={<PaymentStatus />} />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
