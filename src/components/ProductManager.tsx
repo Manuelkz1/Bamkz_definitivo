@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Product } from '../types/index';
 import { toast } from 'react-hot-toast';
-import { Pencil, Trash2, Plus, X, Save, Truck } from 'lucide-react';
+import { Pencil, Trash2, Plus, X, Truck } from 'lucide-react';
 
 export function ProductManager() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -10,8 +10,6 @@ export function ProductManager() {
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
   const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({});
-  const [editingShippingDays, setEditingShippingDays] = useState<string | null>(null);
-  const [shippingDaysValue, setShippingDaysValue] = useState<string>('');
 
   useEffect(() => {
     loadProducts();
@@ -37,7 +35,14 @@ export function ProductManager() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setCurrentProduct({ ...currentProduct, [name]: value });
+    
+    // Handle shipping_days as a number
+    if (name === 'shipping_days') {
+      const numValue = value === '' ? null : parseInt(value, 10);
+      setCurrentProduct({ ...currentProduct, [name]: numValue });
+    } else {
+      setCurrentProduct({ ...currentProduct, [name]: value });
+    }
   };
 
   const handleAddProduct = () => {
@@ -100,105 +105,6 @@ export function ProductManager() {
     }
   };
 
-  const startEditingShippingDays = (product: Product) => {
-    setEditingShippingDays(product.id);
-    
-    // Intentar obtener los días de envío del campo shipping_days
-    if (product.shipping_days) {
-      setShippingDaysValue(product.shipping_days.toString());
-      return;
-    }
-    
-    // Si no existe, intentar extraerlo de la descripción
-    if (product.description) {
-      const match = product.description.match(/\[shipping_days:(\d+)\]/);
-      if (match && match[1]) {
-        setShippingDaysValue(match[1]);
-        return;
-      }
-    }
-    
-    // Si no se encuentra en ningún lado, establecer valor vacío
-    setShippingDaysValue('');
-  };
-
-  const saveShippingDays = async (productId: string) => {
-    try {
-      // Convertir el valor a número antes de procesarlo
-      const shippingDaysNumber = parseInt(shippingDaysValue, 10);
-      
-      // Verificar si es un número válido
-      if (isNaN(shippingDaysNumber)) {
-        toast.error('Por favor ingresa un número válido para los días de envío');
-        return;
-      }
-      
-      // Encontrar el producto actual
-      const currentProduct = products.find(p => p.id === productId);
-      if (!currentProduct) {
-        toast.error('Producto no encontrado');
-        return;
-      }
-      
-      // Preparar la descripción actualizada
-      let updatedDescription = currentProduct.description || '';
-      
-      // Eliminar cualquier etiqueta de shipping_days existente
-      updatedDescription = updatedDescription.replace(/\[shipping_days:\d+\]/g, '');
-      
-      // Añadir la nueva etiqueta de shipping_days
-      updatedDescription = updatedDescription + `\n[shipping_days:${shippingDaysNumber}]`;
-      
-      // Limpiar espacios en blanco múltiples
-      updatedDescription = updatedDescription.trim();
-      
-      // Crear un objeto con los datos actualizados
-      const updatedProduct = {
-        ...currentProduct,
-        description: updatedDescription
-      };
-      
-      // Actualizar el producto en la base de datos
-      const { error } = await supabase
-        .from('products')
-        .update({ description: updatedProduct.description })
-        .eq('id', productId);
-
-      if (error) throw error;
-      
-      // Actualizar el estado local
-      setProducts(products.map(p => 
-        p.id === productId 
-          ? { ...p, shipping_days: shippingDaysNumber, description: updatedProduct.description } 
-          : p
-      ));
-      
-      toast.success('Días de envío actualizados');
-      setEditingShippingDays(null);
-    } catch (error) {
-      console.error('Error updating shipping days:', error);
-      toast.error('Error al actualizar los días de envío');
-    }
-  };
-
-  const getShippingDaysDisplay = (product: Product) => {
-    // Intentar obtener los días de envío del campo shipping_days
-    if (product.shipping_days) {
-      return `${product.shipping_days} días`;
-    }
-    
-    // Si no existe, intentar extraerlo de la descripción
-    if (product.description) {
-      const match = product.description.match(/\[shipping_days:(\d+)\]/);
-      if (match && match[1]) {
-        return `${match[1]} días`;
-      }
-    }
-    
-    // Si no se encuentra en ningún lado, mostrar "No especificado"
-    return 'No especificado';
-  };
-
   if (loading) {
     return (
       <div className="animate-pulse">
@@ -222,24 +128,6 @@ export function ProductManager() {
           <Plus className="h-5 w-5 mr-2" />
           Añadir Producto
         </button>
-      </div>
-
-      {/* Información sobre días de envío */}
-      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <Truck className="h-5 w-5 text-blue-500" />
-          </div>
-          <div className="ml-3">
-            <p className="text-sm text-blue-700 font-medium">
-              Configuración de días de envío
-            </p>
-            <p className="text-sm text-blue-700 mt-1">
-              Ahora puedes configurar los días de envío para cada producto haciendo clic en el icono de camión <Truck className="h-4 w-4 inline text-blue-500" /> junto al valor actual.
-              Esta información se mostrará a los clientes en la página del producto.
-            </p>
-          </div>
-        </div>
       </div>
 
       {showForm ? (
@@ -329,7 +217,8 @@ export function ProductManager() {
                     value={currentProduct.shipping_days || ''}
                     onChange={handleInputChange}
                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                    placeholder="Ej: 3-5"
+                    min="0"
+                    placeholder="Ej: 3"
                   />
                   <Truck className="h-5 w-5 ml-2 text-indigo-600" />
                 </div>
@@ -418,42 +307,9 @@ export function ProductManager() {
                     <div className="text-sm text-gray-900">{product.category}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {editingShippingDays === product.id ? (
-                      <div className="flex items-center">
-                        <input
-                          type="text"
-                          value={shippingDaysValue}
-                          onChange={(e) => setShippingDaysValue(e.target.value)}
-                          className="block w-20 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          placeholder="Ej: 3-5"
-                        />
-                        <button
-                          onClick={() => saveShippingDays(product.id)}
-                          className="ml-2 text-indigo-600 hover:text-indigo-900"
-                        >
-                          <Save className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => setEditingShippingDays(null)}
-                          className="ml-1 text-gray-500 hover:text-gray-700"
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center">
-                        <span className="text-sm text-gray-900">
-                          {getShippingDaysDisplay(product)}
-                        </span>
-                        <button
-                          onClick={() => startEditingShippingDays(product)}
-                          className="ml-2 text-indigo-600 hover:text-indigo-900"
-                          title="Editar días de envío"
-                        >
-                          <Truck className="h-5 w-5" />
-                        </button>
-                      </div>
-                    )}
+                    <div className="text-sm text-gray-900">
+                      {product.shipping_days ? `${product.shipping_days} días` : 'No especificado'}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
@@ -479,5 +335,4 @@ export function ProductManager() {
   );
 }
 
-// Añadir exportación predeterminada para resolver el error de importación en AdminPanel.tsx
 export default ProductManager;
