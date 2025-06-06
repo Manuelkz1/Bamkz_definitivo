@@ -64,7 +64,7 @@ serve(async (req) => {
     const preference = new Preference(client);
     
     // Get origin for back_urls
-    const origin = req.headers.get('origin') || 'https://xawsitihehpebojtkunk.supabase.co';
+    const origin = req.headers.get('origin') || 'https://bamkz.netlify.app';
     console.log('Using origin:', origin);
 
     // Get customer name parts
