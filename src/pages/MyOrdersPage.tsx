@@ -83,34 +83,50 @@ export default function MyOrdersPage() {
   };
 
   // Función para obtener los días de envío de un producto
-  const getShippingDays = (product: any): number => {
+  const getShippingDays = (product: any): string => {
     // Intentar obtener los días de envío del campo shipping_days
     if (product.shipping_days) {
       return product.shipping_days;
     }
     
-    // Si no existe, intentar extraerlo de la descripción
+    // Si no existe, intentar extraerlo de la descripción (manteniendo compatibilidad)
     if (product.description) {
       const match = product.description.match(/\[shipping_days:(\d+)\]/);
       if (match && match[1]) {
-        return parseInt(match[1], 10);
+        return match[1];
       }
     }
     
     // Si no se encuentra en ningún lado, devolver valor predeterminado
-    return 3;
+    return "3-5";
   };
 
   // Función para obtener los días de envío estimados de todos los productos en el pedido
-  const getOrderEstimatedDays = (order: Order): number => {
-    if (!order.order_items || order.order_items.length === 0) return 3;
+  const getOrderEstimatedDays = (order: Order): string => {
+    if (!order.order_items || order.order_items.length === 0) return "3-5";
     
-    // Obtener el máximo de días de envío entre todos los productos del pedido
-    const maxShippingDays = Math.max(
-      ...order.order_items.map(item => getShippingDays(item.products))
-    );
+    // Obtener el rango máximo de días de envío entre todos los productos del pedido
+    const shippingDaysArray = order.order_items.map(item => getShippingDays(item.products));
     
-    return maxShippingDays;
+    // Extraer el número más alto de cada rango para calcular el máximo tiempo estimado
+    const maxDays = Math.max(...shippingDaysArray.map(days => {
+      // Si es un rango como "10-15", tomar el número más alto
+      if (days.includes('-')) {
+        const parts = days.split('-');
+        return parseInt(parts[1], 10) || parseInt(parts[0], 10);
+      }
+      // Si es un número simple como "10", convertirlo
+      return parseInt(days, 10) || 5;
+    }));
+    
+    // Si todos los productos tienen el mismo tiempo, devolver ese rango
+    // Si no, devolver el máximo encontrado
+    const uniqueDays = [...new Set(shippingDaysArray)];
+    if (uniqueDays.length === 1) {
+      return uniqueDays[0];
+    }
+    
+    return `${Math.max(3, maxDays - 2)}-${maxDays}`;
   };
 
   // Función para manejar errores de imágenes de manera consistente
@@ -258,7 +274,7 @@ export default function MyOrdersPage() {
                             <div>
                               <p className="text-xs text-gray-500 uppercase tracking-wide">Tiempo de entrega</p>
                               <p className="text-sm font-medium text-gray-900">
-                                {getOrderEstimatedDays(order)} días estimados
+                                {getOrderEstimatedDays(order)} días hábiles estimados
                               </p>
                               <p className="text-xs text-gray-500">Desde la confirmación</p>
                             </div>

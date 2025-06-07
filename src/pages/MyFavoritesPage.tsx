@@ -41,7 +41,7 @@ export default function MyFavoritesPage() {
   };
 
   // Función para obtener los días de envío de un producto
-  const getShippingDays = (product: any): number => {
+  const getShippingDays = (product: any): string => {
     if (product.shipping_days) {
       return product.shipping_days;
     }
@@ -49,11 +49,11 @@ export default function MyFavoritesPage() {
     if (product.description) {
       const match = product.description.match(/\[shipping_days:(\d+)\]/);
       if (match && match[1]) {
-        return parseInt(match[1], 10);
+        return match[1];
       }
     }
     
-    return 3;
+    return "3-5";
   };
 
   // Función para obtener precio promocional
@@ -223,7 +223,7 @@ export default function MyFavoritesPage() {
                         {/* Días de envío */}
                         <div className="flex items-center text-sm text-gray-600 mb-3">
                           <Truck className="h-4 w-4 mr-1 text-indigo-500" />
-                          <span>Llega en {getShippingDays(product)} días</span>
+                          <span>Llega en {getShippingDays(product)} días hábiles</span>
                         </div>
 
                         {/* Precio */}

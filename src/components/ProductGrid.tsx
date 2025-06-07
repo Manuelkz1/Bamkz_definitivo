@@ -255,22 +255,22 @@ export function ProductGrid() {
   };
 
   // Función para obtener los días de envío de un producto
-  const getShippingDays = (product: Product): number => {
+  const getShippingDays = (product: Product): string => {
     // Intentar obtener los días de envío del campo shipping_days
     if (product.shipping_days) {
       return product.shipping_days;
     }
     
-    // Si no existe, intentar extraerlo de la descripción
+    // Si no existe, intentar extraerlo de la descripción (manteniendo compatibilidad)
     if (product.description) {
       const match = product.description.match(/\[shipping_days:(\d+)\]/);
       if (match && match[1]) {
-        return parseInt(match[1], 10);
+        return match[1];
       }
     }
     
     // Si no se encuentra en ningún lado, devolver valor predeterminado
-    return 3;
+    return "3-5";
   };
 
   // Renderizar estrellas basadas en la calificación
@@ -410,7 +410,7 @@ export function ProductGrid() {
               {/* Días de envío */}
               <div className="flex items-center text-sm text-gray-600 mb-2">
                 <Truck className="h-4 w-4 mr-1 text-indigo-500" />
-                <span>Llega en {getShippingDays(product)} días</span>
+                <span>Llega en {getShippingDays(product)} días hábiles</span>
               </div>
               
               <div className="flex justify-between items-center">
