@@ -36,13 +36,14 @@ export function ProductGrid() {
     if (user && !favoritesStore.isInitialized) {
       favoritesStore.loadFavorites(user.id);
     }
-  }, [user, favoritesStore]);
+  }, [user]);
 
   useEffect(() => {
-    if (user && favoritesStore.isInitialized) {
+    // Solo verificar descuentos cuando se inicializan los favoritos por primera vez
+    if (user && favoritesStore.isInitialized && favoritesStore.favorites.length > 0) {
       favoritesStore.checkForDiscounts();
     }
-  }, [products, favoritesStore.isInitialized]);
+  }, [favoritesStore.isInitialized]);
 
   const loadProducts = async () => {
     try {

@@ -22,7 +22,7 @@ export default function Home() {
     if (user && !favoritesStore.isInitialized) {
       favoritesStore.loadFavorites(user.id);
     }
-  }, [user, favoritesStore]);
+  }, [user]);
 
   const handleOrdersClick = () => {
     if (user) {

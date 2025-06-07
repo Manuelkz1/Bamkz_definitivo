@@ -17,7 +17,7 @@ export default function MyFavoritesPage() {
     if (user && !favoritesStore.isInitialized) {
       favoritesStore.loadFavorites(user.id);
     }
-  }, [user, favoritesStore]);
+  }, [user]);
 
   const handleAddToCart = (product: any, e: React.MouseEvent) => {
     e.preventDefault();

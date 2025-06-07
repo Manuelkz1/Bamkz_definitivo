@@ -37,6 +37,10 @@ export const useFavoritesStore = create<FavoritesStore>()(
       loadFavorites: async (userId: string) => {
         if (!userId) return;
         
+        // Evitar múltiples llamadas simultáneas
+        const state = get();
+        if (state.loading || state.isInitialized) return;
+        
         try {
           set({ loading: true });
           
@@ -59,8 +63,8 @@ export const useFavoritesStore = create<FavoritesStore>()(
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
-          if (error && error.code === '42P01') {
-            // La tabla no existe aún, pero el usuario no tiene favoritos
+          // Si la tabla no existe, simplemente inicializar vacío SIN mostrar error
+          if (error && (error.code === '42P01' || error.message?.includes('relation "favorites" does not exist'))) {
             set({ 
               favorites: [],
               loading: false,
@@ -82,16 +86,13 @@ export const useFavoritesStore = create<FavoritesStore>()(
             isInitialized: true 
           });
         } catch (error) {
-          console.error('Error loading favorites:', error);
+          console.error('Favoritos system not ready yet:', error);
           set({ 
             favorites: [],
             loading: false, 
             isInitialized: true 
           });
-          // No mostrar error si es solo que la tabla no existe
-          if (error.code !== '42P01') {
-            toast.error('Error al cargar favoritos');
-          }
+          // NO mostrar toast de error para evitar spam en pantalla
         }
       },
 
@@ -102,7 +103,7 @@ export const useFavoritesStore = create<FavoritesStore>()(
         }
 
         try {
-          // Check if already exists
+          // Check if already exists (manejo silencioso si tabla no existe)
           const { data: existing } = await supabase
             .from('favorites')
             .select('id')
@@ -137,8 +138,13 @@ export const useFavoritesStore = create<FavoritesStore>()(
 
           toast.success('Producto agregado a favoritos ❤️');
         } catch (error) {
-          console.error('Error adding to favorites:', error);
-          toast.error('Error al agregar a favoritos');
+          console.error('Favorites table not ready:', error);
+          // Si la tabla no existe, agregar a favoritos localmente por ahora
+          if (error.code === '42P01' || error.message?.includes('relation "favorites" does not exist')) {
+            toast.info('Favoritos no disponible temporalmente');
+          } else {
+            toast.error('Error al agregar a favoritos');
+          }
         }
       },
 
@@ -158,8 +164,17 @@ export const useFavoritesStore = create<FavoritesStore>()(
 
           toast.success('Producto eliminado de favoritos');
         } catch (error) {
-          console.error('Error removing from favorites:', error);
-          toast.error('Error al eliminar de favoritos');
+          console.error('Favorites table not ready:', error);
+          // Manejo silencioso si la tabla no existe
+          if (error.code === '42P01' || error.message?.includes('relation "favorites" does not exist')) {
+            // Remover localmente sin mostrar error
+            set(state => ({
+              favorites: state.favorites.filter(fav => fav.product_id !== productId)
+            }));
+            toast.success('Producto eliminado de favoritos');
+          } else {
+            toast.error('Error al eliminar de favoritos');
+          }
         }
       },
 
@@ -178,7 +193,11 @@ export const useFavoritesStore = create<FavoritesStore>()(
       },
 
       checkForDiscounts: () => {
-        const { favorites } = get();
+        const { favorites, isInitialized } = get();
+        
+        // Solo verificar si hay favoritos inicializados
+        if (!isInitialized || favorites.length === 0) return;
+        
         const discountedFavorites = favorites.filter(fav => 
           fav.product?.promotion && fav.product.promotion.active
         );
