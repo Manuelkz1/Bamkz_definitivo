@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
-import { Order } from '../types/index';
+import { Order, Product } from '../types/index';
 import { format } from 'date-fns';
-import { Package, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Package, ChevronRight, ArrowLeft, Truck, Calendar, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export default function MyOrdersPage() {
@@ -34,7 +34,9 @@ export default function MyOrdersPage() {
             selected_color,
             products (
               name,
-              images
+              images,
+              shipping_days,
+              description
             )
           )
         `)
@@ -78,6 +80,37 @@ export default function MyOrdersPage() {
       cancelled: 'Cancelado'
     };
     return labels[status as keyof typeof labels] || status;
+  };
+
+  // Función para obtener los días de envío de un producto
+  const getShippingDays = (product: any): number => {
+    // Intentar obtener los días de envío del campo shipping_days
+    if (product.shipping_days) {
+      return product.shipping_days;
+    }
+    
+    // Si no existe, intentar extraerlo de la descripción
+    if (product.description) {
+      const match = product.description.match(/\[shipping_days:(\d+)\]/);
+      if (match && match[1]) {
+        return parseInt(match[1], 10);
+      }
+    }
+    
+    // Si no se encuentra en ningún lado, devolver valor predeterminado
+    return 3;
+  };
+
+  // Función para obtener los días de envío estimados de todos los productos en el pedido
+  const getOrderEstimatedDays = (order: Order): number => {
+    if (!order.order_items || order.order_items.length === 0) return 3;
+    
+    // Obtener el máximo de días de envío entre todos los productos del pedido
+    const maxShippingDays = Math.max(
+      ...order.order_items.map(item => getShippingDays(item.products))
+    );
+    
+    return maxShippingDays;
   };
 
   if (loading) {
@@ -126,7 +159,7 @@ export default function MyOrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <Link to="/" className="flex items-center text-gray-600 hover:text-gray-900">
@@ -135,65 +168,132 @@ export default function MyOrdersPage() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Mis Pedidos</h2>
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="px-6 py-6 border-b border-gray-200 bg-gradient-to-r from-indigo-500 to-purple-600">
+            <div className="flex items-center space-x-3">
+              <Package className="h-8 w-8 text-white" />
+              <div>
+                <h2 className="text-2xl font-bold text-white">Mis Pedidos</h2>
+                <p className="text-indigo-100 text-sm">Historial completo de tus compras</p>
+              </div>
+            </div>
           </div>
 
           {orders.length === 0 ? (
-            <div className="p-6 text-center">
-              <Package className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No hay pedidos</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Aún no has realizado ningún pedido.
-              </p>
-              <div className="mt-6">
-                <Link
-                  to="/"
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Empezar a comprar
-                </Link>
+            <div className="p-12 text-center">
+              <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                <Package className="h-12 w-12 text-gray-400" />
               </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay pedidos aún</h3>
+              <p className="text-gray-500 mb-8 max-w-md mx-auto">
+                Descubre nuestros productos y realiza tu primera compra. ¡Tenemos ofertas increíbles esperándote!
+              </p>
+              <Link
+                to="/"
+                className="inline-flex items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
+              >
+                <Package className="h-5 w-5 mr-2" />
+                Explorar productos
+              </Link>
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {orders.map((order) => (
-                <div key={order.id} className="p-6 hover:bg-gray-50">
+              {orders.map((order, orderIndex) => (
+                <div key={order.id} className="p-6 hover:bg-gray-50 transition-colors duration-200">
                   <Link to={`/orders/${order.id}`} className="block">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-indigo-600 truncate">
-                            Pedido #{order.id?.substring(0, 8)}
-                          </p>
-                          <div className="ml-2 flex-shrink-0">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(order.status)}`}>
+                        {/* Header del pedido con numeración */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              Pedido {orderIndex + 1}
+                            </h3>
+                            <span className="text-sm text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
+                              #{order.id?.substring(0, 8)}
+                            </span>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadgeColor(order.status)}`}>
                               {getStatusLabel(order.status)}
                             </span>
                           </div>
                         </div>
-                        <div className="mt-2">
-                          <p className="text-sm text-gray-500">
-                            Realizado el {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm')}
-                          </p>
-                          <p className="mt-1 text-sm text-gray-900">
-                            Total: ${order.total.toFixed(2)}
-                          </p>
+
+                        {/* Información principal del pedido */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                          {/* Fecha de pedido */}
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-4 w-4 text-blue-500" />
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide">Fecha del pedido</p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {format(new Date(order.created_at), 'dd/MM/yyyy')}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {format(new Date(order.created_at), 'HH:mm')}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Días estimados de entrega */}
+                          <div className="flex items-center space-x-2">
+                            <Truck className="h-4 w-4 text-green-500" />
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide">Tiempo de entrega</p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {getOrderEstimatedDays(order)} días estimados
+                              </p>
+                              <p className="text-xs text-gray-500">Desde la confirmación</p>
+                            </div>
+                          </div>
+
+                          {/* Total del pedido */}
+                          <div className="flex items-center space-x-2">
+                            <div className="h-4 w-4 bg-indigo-500 rounded-full flex items-center justify-center">
+                              <span className="text-xs text-white font-bold">$</span>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide">Total pagado</p>
+                              <p className="text-lg font-bold text-gray-900">
+                                ${order.total.toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-2 space-y-1">
+
+                        {/* Lista de productos */}
+                        <div className="space-y-2">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Productos incluidos</p>
                           {order.order_items?.map((item, index) => (
-                            <div key={index} className="flex items-center text-sm text-gray-500">
-                              <span className="truncate">
-                                {item.quantity}x {item.products.name}
-                                {item.selected_color && ` (${item.selected_color})`}
-                              </span>
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
+                                <span className="text-sm font-medium text-gray-900">
+                                  {item.products.name}
+                                </span>
+                                {item.selected_color && (
+                                  <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full">
+                                    {item.selected_color}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-3">
+                                <span className="text-sm text-gray-500">
+                                  Cantidad: {item.quantity}
+                                </span>
+                                <span className="text-sm font-medium text-gray-900">
+                                  ${(item.price_at_time * item.quantity).toFixed(2)}
+                                </span>
+                              </div>
                             </div>
                           ))}
                         </div>
                       </div>
-                      <div className="ml-6 flex-shrink-0">
-                        <ChevronRight className="h-5 w-5 text-gray-400" />
+                      
+                      {/* Flecha de navegación */}
+                      <div className="ml-6 flex-shrink-0 self-center">
+                        <ChevronRight className="h-6 w-6 text-gray-400" />
                       </div>
                     </div>
                   </Link>
