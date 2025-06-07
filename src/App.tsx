@@ -11,6 +11,7 @@ import GuestCheckout from './components/GuestCheckout';
 import { AdminPanel } from './components/AdminPanel';
 import OrderDetails from './components/OrderDetails';
 import MyOrdersPage from './pages/MyOrdersPage';
+import MyFavoritesPage from './pages/MyFavoritesPage';
 import { PaymentStatus } from './components/PaymentStatus';
 
 // Componente para manejar el callback de autenticación
@@ -77,6 +78,11 @@ function App() {
         <Route path="/my-orders" element={
           <ProtectedRoute>
             <MyOrdersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/my-favorites" element={
+          <ProtectedRoute>
+            <MyFavoritesPage />
           </ProtectedRoute>
         } />
         <Route path="/orders/:id" element={

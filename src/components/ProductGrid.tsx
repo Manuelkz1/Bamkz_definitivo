@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { ShoppingCart, Search, Filter, X, Tag, Star, Truck } from 'lucide-react';
+import { ShoppingCart, Search, Filter, X, Tag, Star, Truck, Heart } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
+import { useFavoritesStore } from '../stores/favoritesStore';
+import { useAuthStore } from '../stores/authStore';
 import type { Product } from '../types/index';
 import { useDebounce } from 'use-debounce';
 
@@ -15,6 +17,8 @@ interface ProductWithRating extends Product {
 export function ProductGrid() {
   const navigate = useNavigate();
   const cartStore = useCartStore();
+  const favoritesStore = useFavoritesStore();
+  const { user } = useAuthStore();
   const [products, setProducts] = useState<ProductWithRating[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +31,18 @@ export function ProductGrid() {
   useEffect(() => {
     loadProducts();
   }, [searchTerm, selectedCategory, sortBy]);
+
+  useEffect(() => {
+    if (user && !favoritesStore.isInitialized) {
+      favoritesStore.loadFavorites(user.id);
+    }
+  }, [user, favoritesStore]);
+
+  useEffect(() => {
+    if (user && favoritesStore.isInitialized) {
+      favoritesStore.checkForDiscounts();
+    }
+  }, [products, favoritesStore.isInitialized]);
 
   const loadProducts = async () => {
     try {
@@ -179,6 +195,25 @@ export function ProductGrid() {
     event.preventDefault();
     event.stopPropagation();
     navigate(`/product/${productId}#reviews`);
+  };
+
+  // Función para manejar favoritos
+  const handleToggleFavorite = async (product: Product, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error('Debes iniciar sesión para agregar favoritos');
+      return;
+    }
+
+    const isFavorite = favoritesStore.isFavorite(product.id);
+    
+    if (isFavorite) {
+      await favoritesStore.removeFromFavorites(user.id, product.id);
+    } else {
+      await favoritesStore.addToFavorites(user.id, product);
+    }
   };
 
   const clearFilters = () => {
@@ -400,13 +435,32 @@ export function ProductGrid() {
                     </span>
                   )}
                 </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={(e) => handleAddToCart(product, e)}
-                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-                  >
-                    <ShoppingCart className="h-5 w-5" />
-                  </button>
+                <div className="flex justify-between items-center">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={(e) => handleAddToCart(product, e)}
+                      className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+                      title="Agregar al carrito"
+                    >
+                      <ShoppingCart className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={(e) => handleToggleFavorite(product, e)}
+                      className={`p-2 rounded-full transition-colors ${
+                        favoritesStore.isFavorite(product.id)
+                          ? 'text-red-500 hover:bg-red-50 bg-red-50'
+                          : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                      }`}
+                      title={favoritesStore.isFavorite(product.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                    >
+                      <Heart 
+                        className={`h-5 w-5 transition-transform ${
+                          favoritesStore.isFavorite(product.id) ? 'scale-110' : ''
+                        }`}
+                        fill={favoritesStore.isFavorite(product.id) ? 'currentColor' : 'none'}
+                      />
+                    </button>
+                  </div>
                   <button
                     onClick={(e) => handleBuyNow(product, e)}
                     className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
