@@ -1,7 +1,6 @@
-// Configuración de Twilio
-const accountSid = import.meta.env.VITE_TWILIO_ACCOUNT_SID;
-const authToken = import.meta.env.VITE_TWILIO_AUTH_TOKEN;
-const messagingServiceSid = import.meta.env.VITE_TWILIO_VERIFY_SERVICE_SID; // En realidad es un Messaging Service
+// NOTE: TwilioService is no longer used
+// SMS authentication is now handled natively by Supabase Auth
+// This file is kept for reference but not imported anywhere
 
 class TwilioService {
   private baseUrl = 'https://api.twilio.com/2010-04-01';
