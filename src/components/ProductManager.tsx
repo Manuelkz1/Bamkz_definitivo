@@ -36,8 +36,13 @@ export function ProductManager() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // Handle shipping_days as text to allow ranges like "10-15"
-    setCurrentProduct({ ...currentProduct, [name]: value });
+    // Handle shipping_days as number (temporal mientras se actualiza la BD)
+    if (name === 'shipping_days') {
+      const numValue = value === '' ? null : parseInt(value, 10);
+      setCurrentProduct({ ...currentProduct, [name]: numValue });
+    } else {
+      setCurrentProduct({ ...currentProduct, [name]: value });
+    }
   };
 
   const handleAddProduct = () => {
@@ -96,7 +101,13 @@ export function ProductManager() {
       loadProducts();
     } catch (error) {
       console.error('Error saving product:', error);
-      toast.error('Error al guardar el producto');
+      
+      // Mensaje específico para error de tipo de datos
+      if (error.message && error.message.includes('invalid input syntax for type integer')) {
+        toast.error('❌ Error: La base de datos aún no acepta rangos. Cambia el tipo de columna "shipping_days" a TEXT en Supabase.');
+      } else {
+        toast.error('Error al guardar el producto');
+      }
     }
   };
 
@@ -206,17 +217,27 @@ export function ProductManager() {
                 </label>
                 <div className="flex items-center">
                   <input
-                    type="text"
+                    type="number"
                     id="shipping_days"
                     name="shipping_days"
                     value={currentProduct.shipping_days || ''}
                     onChange={handleInputChange}
                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                    placeholder="Ej: 10, 10-15, 5-7"
+                    placeholder="Ej: 10"
+                    min="1"
+                    max="60"
                   />
                   <Truck className="h-5 w-5 ml-2 text-indigo-600" />
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Tiempo estimado de entrega en días hábiles (puedes usar rangos como "10-15")</p>
+                <div className="mt-1">
+                  <p className="text-xs text-gray-500">Tiempo estimado de entrega en días hábiles</p>
+                  <div className="mt-1 p-2 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                    <p className="text-xs text-yellow-700">
+                      ⚠️ <strong>Nota temporal:</strong> Usa números específicos por ahora (ej: 15). 
+                      Los rangos como "10-15" estarán disponibles después de actualizar la base de datos.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
