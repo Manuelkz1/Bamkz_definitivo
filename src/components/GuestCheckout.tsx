@@ -56,6 +56,19 @@ export function GuestCheckout() {
     sessionStorage.setItem("checkout-form", JSON.stringify(formData));
   }, [formData]);
 
+  // Pre-rellenar formulario con datos del usuario si está logueado
+  useEffect(() => {
+    if (user && user.full_name && user.email) {
+      setFormData(prev => ({
+        ...prev,
+        fullName: prev.fullName || user.full_name || '',
+        email: prev.email || user.email || '',
+        // Solo llenar teléfono si está disponible y el campo está vacío
+        phone: prev.phone || user.phone || ''
+      }));
+    }
+  }, [user]);
+
   const redirectToMercadoPago = (url: string) => {
     console.log('Iniciando redirección a Mercado Pago:', url);
     
