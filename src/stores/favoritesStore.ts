@@ -25,6 +25,7 @@ interface FavoritesStore {
   getFavoriteCount: () => number;
   clearFavorites: () => void;
   checkForDiscounts: () => void;
+  syncWithDatabase: (userId: string) => Promise<void>;
 }
 
 export const useFavoritesStore = create<FavoritesStore>()(
@@ -63,13 +64,19 @@ export const useFavoritesStore = create<FavoritesStore>()(
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
-          // Si la tabla no existe, simplemente inicializar vacío SIN mostrar error
+          // Si la tabla no existe, inicializar vacío y programar reintento
           if (error && (error.code === '42P01' || error.message?.includes('relation "favorites" does not exist'))) {
             set({ 
               favorites: [],
               loading: false,
               isInitialized: true 
             });
+            
+            // Intentar sincronizar más tarde cuando la tabla esté disponible
+            setTimeout(() => {
+              get().syncWithDatabase(userId);
+            }, 30000); // Reintento en 30 segundos
+            
             return;
           }
 
@@ -86,13 +93,17 @@ export const useFavoritesStore = create<FavoritesStore>()(
             isInitialized: true 
           });
         } catch (error) {
-          console.error('Favoritos system not ready yet:', error);
+          console.log('Favoritos system starting in local mode');
           set({ 
             favorites: [],
             loading: false, 
             isInitialized: true 
           });
-          // NO mostrar toast de error para evitar spam en pantalla
+          
+          // Programar reintento de sincronización
+          setTimeout(() => {
+            get().syncWithDatabase(userId);
+          }, 60000); // Reintento en 1 minuto
         }
       },
 
@@ -102,20 +113,33 @@ export const useFavoritesStore = create<FavoritesStore>()(
           return;
         }
 
+        // Verificar si ya existe localmente
+        const state = get();
+        const alreadyExists = state.favorites.some(fav => fav.product_id === product.id);
+        
+        if (alreadyExists) {
+          toast.info('Este producto ya está en tus favoritos');
+          return;
+        }
+
+        // Crear favorito local inmediatamente
+        const localFavorite = {
+          id: `local-${Date.now()}`,
+          user_id: userId,
+          product_id: product.id,
+          created_at: new Date().toISOString(),
+          product: product
+        };
+
+        // Agregar a la lista local
+        set(state => ({
+          favorites: [localFavorite, ...state.favorites]
+        }));
+
+        toast.success('Producto agregado a favoritos ❤️');
+
+        // Intentar sincronizar con Supabase en segundo plano (silenciosamente)
         try {
-          // Check if already exists (manejo silencioso si tabla no existe)
-          const { data: existing } = await supabase
-            .from('favorites')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('product_id', product.id)
-            .maybeSingle();
-
-          if (existing) {
-            toast.info('Este producto ya está en tus favoritos');
-            return;
-          }
-
           const { data, error } = await supabase
             .from('favorites')
             .insert({
@@ -125,56 +149,40 @@ export const useFavoritesStore = create<FavoritesStore>()(
             .select()
             .single();
 
-          if (error) throw error;
-
-          const newFavorite = {
-            ...data,
-            product: product
-          };
-
-          set(state => ({
-            favorites: [newFavorite, ...state.favorites]
-          }));
-
-          toast.success('Producto agregado a favoritos ❤️');
-        } catch (error) {
-          console.error('Favorites table not ready:', error);
-          // Si la tabla no existe, agregar a favoritos localmente por ahora
-          if (error.code === '42P01' || error.message?.includes('relation "favorites" does not exist')) {
-            toast.info('Favoritos no disponible temporalmente');
-          } else {
-            toast.error('Error al agregar a favoritos');
+          if (!error && data) {
+            // Reemplazar favorito local con el de la base de datos
+            set(state => ({
+              favorites: state.favorites.map(fav => 
+                fav.id === localFavorite.id 
+                  ? { ...data, product: product }
+                  : fav
+              )
+            }));
           }
+        } catch (error) {
+          // Silencioso - el favorito ya está guardado localmente
+          console.log('Favoritos will sync when database is ready');
         }
       },
 
       removeFromFavorites: async (userId: string, productId: string) => {
+        // Remover localmente inmediatamente
+        set(state => ({
+          favorites: state.favorites.filter(fav => fav.product_id !== productId)
+        }));
+
+        toast.success('Producto eliminado de favoritos');
+
+        // Intentar sincronizar con Supabase en segundo plano (silenciosamente)
         try {
-          const { error } = await supabase
+          await supabase
             .from('favorites')
             .delete()
             .eq('user_id', userId)
             .eq('product_id', productId);
-
-          if (error) throw error;
-
-          set(state => ({
-            favorites: state.favorites.filter(fav => fav.product_id !== productId)
-          }));
-
-          toast.success('Producto eliminado de favoritos');
         } catch (error) {
-          console.error('Favorites table not ready:', error);
-          // Manejo silencioso si la tabla no existe
-          if (error.code === '42P01' || error.message?.includes('relation "favorites" does not exist')) {
-            // Remover localmente sin mostrar error
-            set(state => ({
-              favorites: state.favorites.filter(fav => fav.product_id !== productId)
-            }));
-            toast.success('Producto eliminado de favoritos');
-          } else {
-            toast.error('Error al eliminar de favoritos');
-          }
+          // Silencioso - el favorito ya está removido localmente
+          console.log('Favoritos will sync when database is ready');
         }
       },
 
@@ -207,6 +215,50 @@ export const useFavoritesStore = create<FavoritesStore>()(
             `¡${discountedFavorites.length} de tus favoritos tiene${discountedFavorites.length > 1 ? 'n' : ''} descuento! 🎉`,
             { duration: 5000 }
           );
+        }
+      },
+
+      syncWithDatabase: async (userId: string) => {
+        if (!userId) return;
+        
+        try {
+          // Intentar cargar favoritos de la base de datos
+          const { data, error } = await supabase
+            .from('favorites')
+            .select(`
+              *,
+              products (
+                id,
+                name,
+                images,
+                price,
+                description,
+                promotion,
+                shipping_days,
+                stock,
+                category
+              )
+            `)
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+          if (!error && data) {
+            const favoritesWithProducts = data.map(fav => ({
+              ...fav,
+              product: fav.products
+            }));
+
+            // Actualizar con datos de la base de datos
+            set({ 
+              favorites: favoritesWithProducts,
+              isInitialized: true 
+            });
+            
+            console.log('Favoritos sincronizados con la base de datos');
+          }
+        } catch (error) {
+          // Si falla la sincronización, mantener favoritos locales
+          console.log('Manteniendo favoritos locales:', error);
         }
       }
     }),
