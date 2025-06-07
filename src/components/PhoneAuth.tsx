@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { customSMSService } from '../services/customSMSService';
+import { directTwilioSMSService } from '../services/directTwilioSMSService';
 // import { twilioService } from '../services/twilioService'; // Ya no necesitamos esto
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Phone, MessageSquare, CheckCircle } from 'lucide-react';
@@ -112,8 +113,14 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
       // Formatear número de teléfono
       const formattedPhone = formatPhoneNumber(phoneNumber);
 
-      // Enviar código SMS usando servicio personalizado Twilio
-      const result = await customSMSService.sendVerificationCode(formattedPhone);
+      // Enviar código SMS con fallback directo a Twilio
+      let result;
+      try {
+        result = await customSMSService.sendVerificationCode(formattedPhone);
+      } catch (error: any) {
+        console.log('Edge Function falló, usando Twilio directo:', error);
+        result = await directTwilioSMSService.sendVerificationCode(formattedPhone);
+      }
       
       if (!result.success) {
         toast.error(result.message);
@@ -143,8 +150,14 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
 
       const formattedPhone = formatPhoneNumber(phoneNumber);
 
-      // Verificar código con servicio personalizado Twilio
-      const result = await customSMSService.verifyCode(formattedPhone, verificationCode);
+      // Verificar código con fallback directo a Twilio
+      let result;
+      try {
+        result = await customSMSService.verifyCode(formattedPhone, verificationCode);
+      } catch (error: any) {
+        console.log('Edge Function falló, usando Twilio directo:', error);
+        result = await directTwilioSMSService.verifyCode(formattedPhone, verificationCode);
+      }
       
       if (!result.success) {
         toast.error(result.message || 'Código incorrecto o expirado');

@@ -18,7 +18,8 @@ serve(async (req) => {
   }
 
   try {
-    const { phone, action = 'send' } = await req.json();
+    const requestBody = await req.json();
+    const { phone, action = 'send', code } = requestBody;
     
     if (!phone) {
       throw new Error('Phone number is required');
@@ -70,8 +71,6 @@ serve(async (req) => {
       }
     } else if (action === 'verify') {
       // Verificar código
-      const { code } = await req.json();
-      
       if (!code) {
         throw new Error('Verification code is required');
       }
