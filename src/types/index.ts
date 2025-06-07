@@ -88,11 +88,14 @@ export interface Review {
 export interface User {
   id: string;
   email: string;
+  phone?: string;
   full_name: string;
   role: 'customer' | 'admin' | 'fulfillment' | 'dropshipping';
   created_at?: string;
   updated_at?: string;
   email_confirmed?: boolean;
+  phone_verified?: boolean;
+  auth_method?: 'email' | 'phone' | 'social';
   last_sign_in?: string;
 }
 
