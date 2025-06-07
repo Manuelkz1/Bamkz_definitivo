@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { useCartStore } from '../stores/cartStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useShippingSettings } from '../hooks/useShippingSettings';
+import { useAuthStore } from '../stores/authStore';
 import { 
   ArrowLeft, 
   CreditCard, 
@@ -33,6 +34,7 @@ export function GuestCheckout() {
   const navigate = useNavigate();
   const cartStore = useCartStore();
   const { settings } = useShippingSettings();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   
@@ -92,6 +94,7 @@ export function GuestCheckout() {
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
+          user_id: user?.id || null, // Asociar al usuario si está logueado
           shipping_address: {
             full_name: formData.fullName,
             address: formData.address,
@@ -109,7 +112,7 @@ export function GuestCheckout() {
           total: cartStore.total,
           status: 'pending',
           payment_status: 'pending',
-          is_guest: true
+          is_guest: !user // Solo es guest si NO hay usuario logueado
         })
         .select()
         .single();
