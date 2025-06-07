@@ -1,13 +1,14 @@
 // Configuración de Twilio
 const accountSid = import.meta.env.VITE_TWILIO_ACCOUNT_SID;
 const authToken = import.meta.env.VITE_TWILIO_AUTH_TOKEN;
-const serviceSid = import.meta.env.VITE_TWILIO_VERIFY_SERVICE_SID;
+const messagingServiceSid = import.meta.env.VITE_TWILIO_VERIFY_SERVICE_SID; // En realidad es un Messaging Service
 
 class TwilioService {
-  private baseUrl = 'https://verify.twilio.com/v2';
+  private baseUrl = 'https://api.twilio.com/2010-04-01';
+  private verificationCodes = new Map<string, { code: string; expires: number }>();
 
   constructor() {
-    // No necesitamos inicializar nada aquí ya que usaremos fetch directamente
+    // Almacenamos códigos temporalmente para simulación en desarrollo
   }
 
   // Enviar código de verificación SMS

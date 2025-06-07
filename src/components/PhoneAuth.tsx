@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { twilioService } from '../services/twilioService';
+// import { twilioService } from '../services/twilioService'; // Ya no necesitamos esto
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Phone, MessageSquare, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
@@ -60,27 +60,71 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
     return value;
   };
 
+  // Funciones auxiliares para formateo de números
+  const formatPhoneNumber = (phoneNumber: string): string => {
+    // Remover espacios y caracteres especiales
+    let cleaned = phoneNumber.replace(/\D/g, '');
+    
+    // Si empieza con 0, removerlo (número local)
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+    }
+    
+    // Si no tiene código de país, agregar +57 (Colombia)
+    if (!cleaned.startsWith('57') && cleaned.length === 10) {
+      cleaned = '57' + cleaned;
+    }
+    
+    // Agregar el signo +
+    return '+' + cleaned;
+  };
+
+  const isValidPhoneNumber = (phoneNumber: string): boolean => {
+    const cleaned = phoneNumber.replace(/\D/g, '');
+    // Aceptar números de 10 dígitos (locales) o 12 dígitos (con código de país)
+    return cleaned.length === 10 || cleaned.length === 12;
+  };
+
+  const maskPhoneNumber = (phoneNumber: string): string => {
+    const cleaned = phoneNumber.replace(/\D/g, '');
+    if (cleaned.length >= 10) {
+      const countryCode = cleaned.substring(0, cleaned.length - 10);
+      const areaCode = cleaned.substring(cleaned.length - 10, cleaned.length - 7);
+      const lastDigits = cleaned.substring(cleaned.length - 4);
+      return `+${countryCode} ${areaCode}***${lastDigits}`;
+    }
+    return phoneNumber;
+  };
+
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       // Validar número de teléfono
-      if (!twilioService.isValidPhoneNumber(phoneNumber)) {
+      if (!isValidPhoneNumber(phoneNumber)) {
         toast.error('Por favor ingresa un número de teléfono válido');
         setLoading(false);
         return;
       }
 
-      // Enviar código SMS
-      const result = await twilioService.sendVerificationCode(phoneNumber);
+      // Formatear número de teléfono
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+
+      // Enviar código SMS usando Supabase Auth
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+        options: {
+          channel: 'sms'
+        }
+      });
       
-      if (result.success) {
-        toast.success(result.message);
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success(`Código de verificación enviado a ${maskPhoneNumber(formattedPhone)}`);
         setStep('verify');
         setCountdown(60); // 60 segundos para reenvío
-      } else {
-        toast.error(result.message);
       }
     } catch (error: any) {
       console.error('Error sending SMS:', error);
@@ -101,14 +145,23 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
         return;
       }
 
-      // Verificar código con Twilio
-      const result = await twilioService.verifyCode(phoneNumber, verificationCode);
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+
+      // Verificar código con Supabase Auth
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: formattedPhone,
+        token: verificationCode,
+        type: 'sms'
+      });
       
-      if (result.success) {
-        // Código verificado, ahora crear/autenticar usuario en Supabase
-        await createOrSignInUser();
+      if (error) {
+        toast.error(error.message || 'Código incorrecto o expirado');
+      } else if (data?.user) {
+        toast.success('¡Autenticación exitosa!');
+        // Supabase Auth maneja automáticamente la creación/inicio de sesión del usuario
+        // El useAuthStore detectará el cambio automáticamente
       } else {
-        toast.error(result.message);
+        toast.error('Error al verificar código');
       }
     } catch (error: any) {
       console.error('Error verifying code:', error);
@@ -192,12 +245,20 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
     
     setLoading(true);
     try {
-      const result = await twilioService.sendVerificationCode(phoneNumber);
-      if (result.success) {
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+      
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+        options: {
+          channel: 'sms'
+        }
+      });
+      
+      if (error) {
+        toast.error(error.message);
+      } else {
         toast.success('Código reenviado');
         setCountdown(60);
-      } else {
-        toast.error(result.message);
       }
     } catch (error) {
       toast.error('Error al reenviar código');
