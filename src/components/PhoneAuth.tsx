@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { customSMSService } from '../services/customSMSService';
 // import { twilioService } from '../services/twilioService'; // Ya no necesitamos esto
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Phone, MessageSquare, CheckCircle } from 'lucide-react';
@@ -111,16 +112,11 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
       // Formatear número de teléfono
       const formattedPhone = formatPhoneNumber(phoneNumber);
 
-      // Enviar código SMS usando Supabase Auth
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
-        options: {
-          channel: 'sms'
-        }
-      });
+      // Enviar código SMS usando servicio personalizado Twilio
+      const result = await customSMSService.sendVerificationCode(formattedPhone);
       
-      if (error) {
-        toast.error(error.message);
+      if (!result.success) {
+        toast.error(result.message);
       } else {
         toast.success(`Código de verificación enviado a ${maskPhoneNumber(formattedPhone)}`);
         setStep('verify');
@@ -147,21 +143,15 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
 
       const formattedPhone = formatPhoneNumber(phoneNumber);
 
-      // Verificar código con Supabase Auth
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: formattedPhone,
-        token: verificationCode,
-        type: 'sms'
-      });
+      // Verificar código con servicio personalizado Twilio
+      const result = await customSMSService.verifyCode(formattedPhone, verificationCode);
       
-      if (error) {
-        toast.error(error.message || 'Código incorrecto o expirado');
-      } else if (data?.user) {
-        toast.success('¡Autenticación exitosa!');
-        // Supabase Auth maneja automáticamente la creación/inicio de sesión del usuario
-        // El useAuthStore detectará el cambio automáticamente
+      if (!result.success) {
+        toast.error(result.message || 'Código incorrecto o expirado');
       } else {
-        toast.error('Error al verificar código');
+        toast.success('¡Verificación exitosa!');
+        // Crear o autenticar usuario después de verificación exitosa
+        await createOrSignInUser();
       }
     } catch (error: any) {
       console.error('Error verifying code:', error);
