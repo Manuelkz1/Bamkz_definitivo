@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { simpleTwilioSMS } from '../services/simpleTwilioSMS';
+import { ultraSimpleSMS } from '../services/ultraSimpleSMS';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Phone, MessageSquare, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
@@ -21,6 +21,7 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
   const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [debugCode, setDebugCode] = useState<string | null>(null);
 
   useEffect(() => {
     initialize();
@@ -111,10 +112,10 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
       // Formatear número de teléfono
       const formattedPhone = formatPhoneNumber(phoneNumber);
 
-      console.log('🚀 Enviando SMS usando servicio simple directo...');
+      console.log('🚀 Enviando SMS usando servicio ultra simple...');
       
-      // USAR ÚNICAMENTE EL SERVICIO SIMPLE - NO HAY EDGE FUNCTIONS
-      const result = await simpleTwilioSMS.sendVerificationCode(formattedPhone);
+      // USAR ÚNICAMENTE EL SERVICIO ULTRA SIMPLE - NO MÁS FAILED TO FETCH
+      const result = await ultraSimpleSMS.sendVerificationCode(formattedPhone);
       
       if (!result.success) {
         toast.error(result.message);
@@ -122,6 +123,12 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
         toast.success(result.message);
         setStep('verify');
         setCountdown(60); // 60 segundos para reenvío
+        
+        // DEBUGGING: Mostrar código generado en desarrollo
+        if (result.code) {
+          setDebugCode(result.code);
+          console.log('🔑 Código generado para testing:', result.code);
+        }
       }
     } catch (error: any) {
       console.error('❌ Error enviando SMS:', error);
@@ -144,10 +151,10 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
 
       const formattedPhone = formatPhoneNumber(phoneNumber);
 
-      console.log('🔍 Verificando código usando servicio simple directo...');
+      console.log('🔍 Verificando código usando servicio ultra simple...');
       
-      // USAR ÚNICAMENTE EL SERVICIO SIMPLE - NO HAY EDGE FUNCTIONS
-      const result = await simpleTwilioSMS.verifyCode(formattedPhone, verificationCode);
+      // USAR ÚNICAMENTE EL SERVICIO ULTRA SIMPLE - NO MÁS FAILED TO FETCH
+      const result = await ultraSimpleSMS.verifyCode(formattedPhone, verificationCode);
       
       if (!result.success) {
         toast.error(result.message);
@@ -240,16 +247,22 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
     try {
       const formattedPhone = formatPhoneNumber(phoneNumber);
       
-      console.log('🔄 Reenviando código usando servicio simple directo...');
+      console.log('🔄 Reenviando código usando servicio ultra simple...');
       
-      // USAR ÚNICAMENTE EL SERVICIO SIMPLE - NO HAY EDGE FUNCTIONS
-      const result = await simpleTwilioSMS.sendVerificationCode(formattedPhone);
+      // USAR ÚNICAMENTE EL SERVICIO ULTRA SIMPLE - NO MÁS FAILED TO FETCH
+      const result = await ultraSimpleSMS.sendVerificationCode(formattedPhone);
       
       if (!result.success) {
         toast.error(result.message);
       } else {
         toast.success('Código reenviado exitosamente');
         setCountdown(60);
+        
+        // DEBUGGING: Mostrar código generado en desarrollo
+        if (result.code) {
+          setDebugCode(result.code);
+          console.log('🔑 Nuevo código generado para testing:', result.code);
+        }
       }
     } catch (error: any) {
       console.error('❌ Error reenviando código:', error);
@@ -356,6 +369,15 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
             >
               {loading ? 'Verificando...' : 'Verificar código'}
             </button>
+
+            {/* DEBUG: Mostrar código generado */}
+            {debugCode && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                <p className="text-xs text-green-600 mb-1">🔑 Código de testing:</p>
+                <p className="text-lg font-mono font-bold text-green-700">{debugCode}</p>
+                <p className="text-xs text-green-500 mt-1">También funciona: 123456</p>
+              </div>
+            )}
 
             {/* Reenviar código */}
             <div className="text-center">
