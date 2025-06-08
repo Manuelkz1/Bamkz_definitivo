@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { simpleTwilioSMS } from '../services/simpleTwilioSMS';
+import { ultraSimpleSMS } from '../services/ultraSimpleSMS';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Phone, MessageSquare, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
@@ -113,8 +113,8 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
 
       console.log('🚀 Enviando SMS usando servicio simple directo...');
       
-      // USAR ÚNICAMENTE EL SERVICIO SIMPLE - NO HAY EDGE FUNCTIONS
-      const result = await simpleTwilioSMS.sendVerificationCode(formattedPhone);
+      // 🚀 SOLUCIÓN DEFINITIVA: ultraSimpleSMS con proxy CORS - NO MÁS 'Failed to fetch'
+      const result = await ultraSimpleSMS.sendVerificationCode(formattedPhone);
       
       if (!result.success) {
         toast.error(result.message);
@@ -146,8 +146,8 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
 
       console.log('🔍 Verificando código usando servicio simple directo...');
       
-      // USAR ÚNICAMENTE EL SERVICIO SIMPLE - NO HAY EDGE FUNCTIONS
-      const result = await simpleTwilioSMS.verifyCode(formattedPhone, verificationCode);
+      // 🚀 SOLUCIÓN DEFINITIVA: ultraSimpleSMS con proxy CORS - NO MÁS 'Failed to fetch'
+      const result = await ultraSimpleSMS.verifyCode(formattedPhone, verificationCode);
       
       if (!result.success) {
         toast.error(result.message);
@@ -242,8 +242,8 @@ export function PhoneAuth({ onAuthSuccess, onBackToEmail }: PhoneAuthProps) {
       
       console.log('🔄 Reenviando código usando servicio simple directo...');
       
-      // USAR ÚNICAMENTE EL SERVICIO SIMPLE - NO HAY EDGE FUNCTIONS
-      const result = await simpleTwilioSMS.sendVerificationCode(formattedPhone);
+      // 🚀 SOLUCIÓN DEFINITIVA: ultraSimpleSMS con proxy CORS - NO MÁS 'Failed to fetch'
+      const result = await ultraSimpleSMS.sendVerificationCode(formattedPhone);
       
       if (!result.success) {
         toast.error(result.message);
