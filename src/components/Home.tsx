@@ -4,7 +4,7 @@ import { useAuthStore } from '../stores/authStore';
 import { ShoppingBag, User, LogOut, ShoppingCart, Package, Clock, Heart } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
 import { useFavoritesStore } from '../stores/favoritesStore';
-import { ProductGrid } from './ProductGrid';
+import { EmergencyProductGrid } from './EmergencyProductGrid';
 import { Cart } from './Cart';
 import { useCompanySettings } from '../hooks/useCompanySettings';
 import { AuthRequiredModal } from './AuthRequiredModal';
@@ -227,7 +227,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <ProductGrid />
+            <EmergencyProductGrid />
             {/* Sección de reseñas en la página inicial */}
             <HomeReviews />
           </>

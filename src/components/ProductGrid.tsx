@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { emergencyProductService } from '../services/emergencyProductService';
 import { toast } from 'react-hot-toast';
 import { ShoppingCart, Search, Filter, X, Tag, Star, Truck, Heart } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
