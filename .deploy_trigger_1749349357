@@ -1,0 +1,8 @@
+{
+  "trigger": "manual_env_config",
+  "timestamp": "2025-06-08T10:22:37.170511",
+  "variables_configured": {
+    "VITE_SUPABASE_URL": "https://xawsitihehpebojtkunk.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "***CONFIGURED***"
+  }
+}
