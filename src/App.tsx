@@ -1,4 +1,4 @@
-import React from 'react'
+// React JSX transform automático habilitado - no se requiere import explícito
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 
 function HomePage() {
