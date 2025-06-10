@@ -1,0 +1,6 @@
+import{c as p,r as n,s as l}from"./index-CsEdGDVt.js";/**
+ * @license lucide-react v0.344.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const h=p("CreditCard",[["rect",{width:"20",height:"14",x:"2",y:"5",rx:"2",key:"ynyp8z"}],["line",{x1:"2",x2:"22",y1:"10",y2:"10",key:"1b3vmo"}]]);function y(){const[r,i]=n.useState(null),[u,s]=n.useState(!0),[g,a]=n.useState(null),o=async()=>{try{s(!0),a(null);const{data:t,error:e}=await l.from("shipping_settings").select("*").single();if(e)throw e;i(t)}catch(t){console.error("Error loading shipping settings:",t),a(t.message)}finally{s(!1)}},d=async t=>{if(!(r!=null&&r.id))return console.error("No settings ID available for update"),{success:!1,error:"Settings not initialized"};try{s(!0),a(null);const{data:e,error:c}=await l.from("shipping_settings").update({...t,updated_at:new Date().toISOString()}).eq("id",r.id).select().single();if(c)throw c;return i(e),{success:!0,data:e}}catch(e){return console.error("Error updating shipping settings:",e),a(e.message),{success:!1,error:e.message}}finally{s(!1)}};return n.useEffect(()=>{o()},[]),{settings:r,loading:u,error:g,updateSettings:d,reload:o}}export{h as C,y as u};

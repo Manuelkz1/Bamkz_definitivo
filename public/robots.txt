@@ -1,0 +1,35 @@
+User-agent: *
+Allow: /
+Allow: /product/*
+Allow: /products/*
+Disallow: /admin/
+Disallow: /auth/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /my-orders
+Disallow: /my-favorites
+Disallow: /orders/
+Disallow: /api/
+Disallow: /functions/
+
+# Archivos específicos
+Disallow: /*.json$
+Disallow: /*.xml$
+Disallow: /sw.js
+Disallow: /offline.html
+
+Sitemap: https://bamkz.com/sitemap.xml
+
+# Crawler específicos
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: facebookexternalhit
+Allow: /
+Allow: /product/*
+Allow: /products/*

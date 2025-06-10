@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sin conexión - Bamkz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .icon svg {
+            width: 40px;
+            height: 40px;
+            color: #6b7280;
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1f2937;
+        }
+        
+        p {
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+        
+        .button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s;
+            margin: 0 8px 8px 0;
+            display: inline-block;
+            text-decoration: none;
+        }
+        
+        .button:hover {
+            background: #4338ca;
+        }
+        
+        .button.secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        
+        .button.secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        .status {
+            margin-top: 24px;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .status.offline {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        
+        .status.online {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .loading {
+            display: none;
+            margin-top: 16px;
+        }
+        
+        .spinner {
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #4f46e5;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            </svg>
+        </div>
+        
+        <h1>Sin conexión</h1>
+        <p>Parece que no tienes conexión a internet. Verifica tu conexión y vuelve a intentar.</p>
+        
+        <button class="button" onclick="checkConnection()">
+            Reintentar
+        </button>
+        
+        <a href="/" class="button secondary">
+            Ir al inicio
+        </a>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+        </div>
+        
+        <div class="status offline" id="status">
+            <strong>Estado:</strong> Sin conexión a internet
+        </div>
+    </div>
+
+    <script>
+        let isOnline = navigator.onLine;
+        
+        function updateStatus() {
+            const status = document.getElementById('status');
+            if (navigator.onLine) {
+                status.className = 'status online';
+                status.innerHTML = '<strong>Estado:</strong> Conexión restaurada';
+            } else {
+                status.className = 'status offline';
+                status.innerHTML = '<strong>Estado:</strong> Sin conexión a internet';
+            }
+        }
+        
+        function checkConnection() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+            
+            // Intentar cargar la página principal
+            fetch('/', { method: 'HEAD', mode: 'no-cors' })
+                .then(() => {
+                    loading.style.display = 'none';
+                    window.location.href = '/';
+                })
+                .catch(() => {
+                    loading.style.display = 'none';
+                    updateStatus();
+                });
+        }
+        
+        // Escuchar cambios en el estado de conexión
+        window.addEventListener('online', () => {
+            updateStatus();
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        });
+        
+        window.addEventListener('offline', updateStatus);
+        
+        // Verificar conexión cada 30 segundos
+        setInterval(() => {
+            if (!navigator.onLine) {
+                fetch('/', { method: 'HEAD', mode: 'no-cors' })
+                    .then(() => {
+                        if (!navigator.onLine) {
+                            window.location.href = '/';
+                        }
+                    })
+                    .catch(() => {
+                        // La conexión sigue sin estar disponible
+                    });
+            }
+        }, 30000);
+        
+        // Actualizar estado inicial
+        updateStatus();
+    </script>
+</body>
+</html>
